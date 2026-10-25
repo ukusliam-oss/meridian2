@@ -14,6 +14,8 @@ import site from './data/site.js';
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 const SPEAKER = on => `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>${on ? '<path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>' : '<path d="m16 9.5 5 5M21 9.5l-5 5"/>'}</svg>`;
 const ARROW = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+// the hover's ink (plan §7.3): a ringed disc whose edge is frayed by SVG noise, like a drop of watercolour; three seeds
+const INK = (col, seed) => `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><defs><filter id='f' x='-30%' y='-30%' width='160%' height='160%'><feTurbulence type='fractalNoise' baseFrequency='.032' numOctaves='3' seed='${seed}'/><feDisplacementMap in='SourceGraphic' scale='36'/><feGaussianBlur stdDeviation='2.2'/></filter><radialGradient id='g'><stop offset='0' stop-color='${col}' stop-opacity='.42'/><stop offset='.62' stop-color='${col}' stop-opacity='.5'/><stop offset='.84' stop-color='${col}' stop-opacity='.86'/><stop offset='1' stop-color='${col}' stop-opacity='0'/></radialGradient></defs><circle cx='100' cy='100' r='66' fill='url(#g)' filter='url(#f)'/></svg>`)}")`;
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export function createFrame({ data, parts, goTo }) {
@@ -49,6 +51,24 @@ export function createFrame({ data, parts, goTo }) {
       </nav>
     </div>`;
   document.body.appendChild(drawer);
+
+  // one ink drop behind whichever edge control the pointer is on: pigment on the paper, light on the stage
+  const ink = document.createElement('i'); ink.className = 'fr__ink'; ink.setAttribute('aria-hidden', 'true'); el.prepend(ink);
+  const inkCol = data.ink || '#6d3fd0';
+  let inkOn = null, seed = 0, stage = false;
+  const HOVER = '.fr__menu, .fr__word, .fr__subj, .fr__part, .fr__sound, .fr__hint-in';
+  if (!reduced && matchMedia('(hover: hover)').matches) {
+    el.addEventListener('pointerover', e => {
+      const t = e.target.closest(HOVER); if (!t || t === inkOn) return; inkOn = t;
+      const r = t.getBoundingClientRect(), d = Math.max(r.width, r.height) + 64;
+      ink.style.cssText = `left:${r.left + r.width / 2 - d / 2}px;top:${r.top + r.height / 2 - d / 2}px;width:${d}px;height:${d}px;background-image:${INK(stage ? '#ffffff' : inkCol, 3 + (seed++ % 3) * 7)};mix-blend-mode:${stage ? 'screen' : 'multiply'}`;
+      gsap.fromTo(ink, { opacity: 0, scale: 0.55 }, { opacity: stage ? 0.28 : 0.55, scale: 1, duration: DUR.ui2, ease: 'm.expo', overwrite: true });
+    });
+    el.addEventListener('pointerout', e => {
+      if (!inkOn || inkOn.contains(e.relatedTarget)) return;
+      inkOn = null; gsap.to(ink, { opacity: 0, duration: DUR.ui, ease: 'm.in', overwrite: true });
+    });
+  }
 
   const menuBtn = $('.fr__menu', el), word = $('.fr__word', el), sub = $('.fr__sub', el), subjLink = $('.fr__subj', el);
   const partsEl = $('.fr__parts', el), partBtns = $$('.fr__part', el), soundBtn = $('.fr__sound', el), hintOuter = $('.fr__hint', el), hint = $('.fr__hint-in', el);
@@ -100,7 +120,7 @@ export function createFrame({ data, parts, goTo }) {
     tone(f) {
       const t = Math.round(smooth(0.2, 0.55, f) * 100);
       if (t === lastTone) return; lastTone = t;
-      el.style.setProperty('--fr-mix', t + '%');
+      el.style.setProperty('--fr-mix', t + '%'); stage = t > 50;
       el.style.setProperty('--fr-shade', (t / 100).toFixed(2));
       hintOuter.style.opacity = String(1 - t / 100); hintOuter.style.visibility = t > 98 ? 'hidden' : '';
     },

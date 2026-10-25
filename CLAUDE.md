@@ -111,11 +111,11 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   shader discards it through `uCut`), `isolines: { id }` (ShakeMap intensity lines coloured IV to X). The legend
   switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
 
-## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phases 0–2 done 2026-10-25)
+## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phases 0–3 done 2026-10-25)
 - The plan measures Cartier's "Le Chœur des Pierres" (opening timeline, proportions, curves, its title face, paper and
   ink) and translates it: an overture where the chapter title is born mid-screen at 1.5× and glides home in 2 s, a
   frame UI instead of bars, three speeds, light and material on the globe, Noto Serif Display, paper at the thresholds
-  and the dark stage for scenes, joined by ink. Phases 3–5 (scene motion, hubs and home, wrap-up) are not built.
+  and the dark stage for scenes, joined by ink. Phases 4–5 (hubs and home, wrap-up) are not built.
 - The frame (phase 2, `assets/js/frame.js`), on chapters with `lockup`: no nav bar and no phone tab bar, only 12 px
   capitals on the edges at `--frame` (32 px at 1440; text 5 px inside it, top and bottom alike, as Cartier's 37 px):
   MENU (a drawer with the whole site from `assets/js/data/site.js`; add a chapter there and in `tools/pages.py`),
@@ -124,7 +124,18 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   for 4.5:1), SOUND on/off, and the overture's "Scroll to begin". Its ink follows the flood (`tone`): dark on paper,
   light on the stage, where soft shades sit in the corners and behind the rings. The pill waits for the first scene
   (`.is-pre`); the legend moves clear of the frame. Phones: no rings and no subject link (both in the menu), the sound
-  icon top right, the pill on the bottom edge.
+  icon top right, the pill on the bottom edge. The edges speak in Archivo Expanded 500 (`.fr-ui`, chosen over Plex
+  Mono); a hover on an edge control blooms a drop of ink behind it (an SVG disc frayed by feTurbulence; pigment with
+  `multiply` on the paper, white light with `screen` on the stage).
+- Scene motion (phase 3, framed chapters, in `chapter.js`): a panel's title words sharpen out of the blur when it
+  reaches the reading line (35% from the bottom), the date follows, its paragraphs and blocks rise 12 px, once each;
+  reading text is never blurred or tied to the scroll. A part opens with a statement screen (`.part--st`: the numeral
+  in a ring, the part's name in 84 px serif, its focus points), during which the ribbon, legend and labels step aside
+  (`.is-part`). Between parts the subject's colour washes the screen as light (`world.setLook({ wash })`, a screen
+  blend from the globe outwards, peak 0.75, rising over the first 30% of the gap and gone by 60%); while a panel holds,
+  the reading grade dims the panel's half by up to 12%, bloom to 30% and the sea's glint to 40% (`setLook({ dim })`).
+  Panels drop the part tag and the scene number (the rings and the pill carry them) and get a finer glass with a top
+  light and the paper's 2% grain. Map labels flip left 76 px before the right edge (`edge`), clear of the rings.
 - The overture (phase 1, `assets/js/overture.js`), for chapters that set `lockup` and `ink` (all three do): the loader
   is a sheet of paper with the Meridian mark drawing its ring as the map loads; the whole screen is the gate ("Tap
   anywhere to enter", Enter or Space; the Sound corner switches the remembered choice and stays as the paper's sound
@@ -175,6 +186,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Measured, phase 2: frame text 13.1:1 on paper and 15.7:1 on the plain stage; over Þingvellir's bright terrain the
   shaded background behind the edges gives 5.9–6.8:1 at the median and 4.2–5.4:1 against its brightest tenth.
   Left and right margins equal at 1440 × 900, 1280 × 720, 768 × 1024 and 390 × 844; top and bottom text within 2 px.
+- Measured, phase 3 (headless, 1440 × 900): scrolling KQ6 scenes 1→12 (two part changes) in 14 s: median and p95
+  16.7–16.8 ms, no long task, 0.42 ms CPU per frame; Economics 2→12: the same, 0.64 ms. Map colours with the grade
+  and wash against `?look=0`, map half: ΔE2000 0.33 (Economics) and 0.37 (Geography) weighted (worst fill 2.2, the
+  sea's glint 6.7).
 - Traps: three encodes its own materials (LineMaterial, MeshBasicMaterial) to sRGB only on the screen, never into a
   render target, while the engine's raw shaders write display values either way; post.js patches those materials to
   encode in the target too (without it the plate lines came out ΔE 13 darker). `Color.set('#hex')` stores linear

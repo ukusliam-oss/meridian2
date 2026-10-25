@@ -95,7 +95,7 @@ const earthFrag = /* glsl */`
 #endif
   uniform vec4 uSlotA, uSlotB;      // x: value row (< 0: no data layer), y: d0, z: d1, w: ramp row
   uniform float uWA, uWB;           // inside each state, how far its values have moved towards the other state's row
-  uniform float uMix, uHatch, uLook, uFade; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
+  uniform float uMix, uHatch, uLook, uFade, uGlint; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv;
   vec2 lonlat() { return vec2(vUv.x * 360.0 - 180.0, vUv.y * 180.0 - 90.0); }
   vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
@@ -213,7 +213,7 @@ const earthFrag = /* glsl */`
       float a = 0.11 + 0.06 * wind, a2 = a * a, nh = max(dot(n, hv), 0.0);
       float D = a2 / (3.14159 * pow(nh * nh * (a2 - 1.0) + 1.0, 2.0));
       float F = 0.02 + 0.98 * pow(1.0 - max(dot(v, hv), 0.0), 5.0);
-      col += vec3(1.0, 0.95, 0.86) * D * F * max(dot(n, L), 0.0) * 0.22 * wm;
+      col += vec3(1.0, 0.95, 0.86) * D * F * max(dot(n, L), 0.0) * 0.22 * wm * uGlint;
       col += uRim * rim * 0.55 * (0.3 + 0.7 * smoothstep(-0.3, 0.5, dot(n, L)));
     } else col += uRim * rim * 0.55;
     gl_FragColor = vec4(col, uFade);
@@ -402,7 +402,7 @@ function painter(feats, dataUrl, onDone) {
 
 // ── engine ──────────────────────────────────────────────────────────────────
 // scenes: engine scenes; a chapter panel that steps through several years has one per year, all with the same `panel`.
-export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', values = null, accent = null, reduced = false, look = 0, paper = null, onFrame } = {}) {
+export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', values = null, accent = null, reduced = false, look = 0, paper = null, edge = 0, onFrame } = {}) {
   if (accent) PALETTE.focus = accent;
   const canvas = document.createElement('canvas');
   canvas.className = 'world__canvas';
@@ -615,7 +615,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     uRelW: { value: flat }, uRelE: { value: flat }, uTA: { value: blank }, uTB: { value: blank },
     uQA: { value: blank }, uQB: { value: blank }, uQBoxA: { value: new Vector4() }, uQBoxB: { value: new Vector4() },
     uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
-    uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uFade: { value: 1 }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
+    uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uFade: { value: 1 }, uGlint: { value: 1 }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
     uOcean: { value: new Color('#06080d') }, uOceanLift: { value: new Color('#0c1220') }, uRim: { value: rim }, uFocus: { value: new Color(PALETTE.focus) },
   };
   if (relief) {
@@ -989,6 +989,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   if (sheet) sheet.ink = paper.ink;
   let sheetRT = null, sheetDirty = true, flood = sheet ? 0 : 1, bloomK = 0, inkReady = false;
   const intro = { fade: 1, arrive: 1 };
+  const grade = { dim: 0, wash: 0, col: new Vector3(1, 1, 1) };
   const baseLight = light.clone(), backLight = new Vector3(0.9, 0.15, -0.7);
   const circle = [0, 0, 1], scratchCam = camera.clone();
   function sheetTex() {
@@ -1063,7 +1064,9 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
       }
       if (vis && !m.w) m.w = m.el.offsetWidth;
       const w = (m.w || 160) + 12;
-      m.el.classList.toggle('is-left', x + w > W && (x - w > 0 || x > W - x)); // the side with room, else the roomier one
+      // the side with room, else the roomier one; a framed chapter keeps `edge` px on the right for its part rings
+      const R = W - (W > 760 ? edge : 0);
+      m.el.classList.toggle('is-left', x + w > R && (x - w > 0 || x > R - x));
     });
   }
   function frame(now) {
@@ -1104,7 +1107,13 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     earthU.uFade.value = intro.fade; earth.material.transparent = intro.fade < 1;
     starsU.uA.value = sheet ? smooth(0.75, 1, flood) : 1;
     // the paper keeps its own measured values: no shoulder, no grade, its own grain, until the stage takes over
-    if (sheet) { const onPaper = flood < 1; post.grade = onPaper ? 0 : 0.5; post.shoulder = onPaper ? 1 : 0.8; post.grain = onPaper ? 0.004 : 0.012; post.bloom = onPaper ? 0 : 0.5; }
+    if (sheet) { const onPaper = flood < 1; post.grade = onPaper ? 0 : 0.5; post.shoulder = onPaper ? 1 : 0.8; post.grain = onPaper ? 0.004 : 0.012; post.bloom = onPaper ? 0 : 0.5 * (1 - 0.7 * grade.dim); }
+    // the reading grade and the light between parts (chapter.js drives them with setLook)
+    if (post) {
+      earthU.uGlint.value = 1 - 0.6 * grade.dim;
+      post.dim(grade.dim, W <= 900);
+      if (grade.wash > 0) { const c = discOf(camera); post.wash(grade.wash, grade.col, c[0] / W, 1 - c[1] / H); } else post.wash(0);
+    }
     if (sheet && sheet.shade !== intro.fade) { sheet.shade = intro.fade; sheetDirty = true; }
 
     // textures: keep the last complete state while a new one is painting, so nothing ever flashes blank
@@ -1178,6 +1187,12 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     // the overture: fade 0 … 1 (the globe appears), arrive 0 … 1 (it comes in from far away and the sun comes round)
     setIntro({ fade, arrive } = {}) { if (fade != null) intro.fade = fade; if (arrive != null) intro.arrive = arrive; dirty = true; },
     paper: !!sheet,
+    // the reading grade (dim: 0 flying … 1 a panel is read) and the light between parts (wash 0 … 1, colour '#hex')
+    setLook({ dim, wash, colour } = {}) {
+      if (colour) { const c = new Color(colour).convertLinearToSRGB(); grade.col.set(c.r, c.g, c.b); dirty = true; }
+      if (dim != null && Math.abs(dim - grade.dim) > 1e-3) { grade.dim = dim; dirty = true; }
+      if (wash != null && Math.abs(wash - grade.wash) > 1e-3) { grade.wash = wash; dirty = true; }
+    },
     // flows of a panel wait for the step of its chain that sends them (0 hidden, 1 drawn)
     setGate(panel, g) { if (gates.get(panel) !== g) { gates.set(panel, g); dirty = true; } },
     pointOf: key => point.get(key),

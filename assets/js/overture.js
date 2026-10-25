@@ -22,7 +22,7 @@ export function prepareOverture(data, fr) {
   loader.innerHTML = `<div class="ov-load">
       <svg class="ov-mark" viewBox="0 0 64 64" aria-hidden="true"><circle class="ov-mark__track" cx="32" cy="32" r="27"/><circle class="ov-mark__ring" cx="32" cy="32" r="27" pathLength="1" data-ov-ring/><ellipse class="ov-mark__mer" cx="32" cy="32" rx="11" ry="27"/></svg>
     </div>
-    <p class="ov-hint mono" data-ov-hint><span>Loading the map</span></p>`;
+    <p class="ov-hint fr-ui" data-ov-hint><span>Loading the map</span></p>`;
 
   // the hero becomes the lock-up; its question, line and note move to the statement screen that follows it
   const hero = $('.ch-hero'), eye = $('.ch-wrap > .mono', hero), h1 = $('.ch-hero__title', hero), info = $('.ch-hero__row p.mono', hero);

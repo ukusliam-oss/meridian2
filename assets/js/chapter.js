@@ -43,6 +43,7 @@ const parts = [];
 scenes.forEach((s, i) => { if (!parts.length || parts.at(-1).name !== s.part) parts.push({ name: s.part, first: i, scenes: [] }); parts.at(-1).scenes.push(i); });
 const partOf = i => parts.findIndex(p => p.scenes.includes(i));
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 const toYear = x => (typeof x === 'string' ? (([y, m]) => y + ((m || 1) - 1) / 12)(x.split('-').map(Number)) : x);
 const SERIES = ['var(--acc)', '#9db7ff', '#ffd59a', '#ff8a7a'];
 // econ.json stores an indicator's axis as a range: years [first, last] or months ['YYYY-MM', 'YYYY-MM']
@@ -149,13 +150,20 @@ function cascade(list) {
 
 function sceneHTML(s, i) {
   const pi = partOf(i), part = parts[pi];
-  const opener = part.first === i ? `<header class="part ch-wrap" data-part="${pi}">
+  const fps = () => [...new Set(part.scenes.flatMap(k => scenes[k].syllabus || []))].sort()
+    .map(t => (data.focusPoints || data.syllabus || []).find(f => f.id === t)).filter(Boolean)
+    .filter(f => !data.focusPoints || f.id.startsWith('FP')).map(f => `<span>${f.id} · ${esc(f.text)}</span>`).join('');
+  // a framed chapter opens each part with a statement screen (design plan §7.2): its numeral, its name in the serif
+  // the chapter's question uses, its focus points; the others keep the display title
+  const opener = part.first !== i ? '' : data.lockup ? `<header class="part part--st ch-wrap" data-part="${pi}">
+      <span class="part__num">${ROMAN[pi] || pi + 1}</span>
+      <h2 class="part__st" data-st>${esc(s.part)}</h2>
+      <div class="part__fps mono">${fps()}</div>
+    </header>` : `<header class="part ch-wrap" data-part="${pi}">
       <span class="tag mono">Part ${pi + 1} of ${parts.length}</span>
       <h2 class="display part__title"><em>${pi === parts.length - 1 ? 'After' : 'Part ' + (pi + 1)}</em>${esc(s.part)}</h2>
-      <div class="part__fps mono">${[...new Set(part.scenes.flatMap(k => scenes[k].syllabus || []))].sort()
-        .map(t => (data.focusPoints || data.syllabus || []).find(f => f.id === t)).filter(Boolean)
-        .filter(f => !data.focusPoints || f.id.startsWith('FP')).map(f => `<span>${f.id} · ${esc(f.text)}</span>`).join('')}</div>
-    </header>` : '';
+      <div class="part__fps mono">${fps()}</div>
+    </header>`;
   const judge = s.judgement ? `<div class="sc__block"><span class="sc__label mono">Judgement</span><div class="sc__judge">
       <div class="for"><span class="mono">Arguments for</span><ul>${s.judgement.for.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
       <div class="against"><span class="mono">Arguments against</span><ul>${s.judgement.against.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
@@ -185,6 +193,32 @@ $('[data-scenes]').innerHTML = scenes.map(sceneHTML).join('');
 // and keeps a frame instead of bars (frame.js): MENU, the wordmark, the subject, the part rings, SOUND
 const fr = data.lockup ? (await import('./frame.js')).createFrame({ data, parts, goTo }) : null;
 const ov = data.lockup ? (await import('./overture.js')).prepareOverture(data, fr) : null;
+// ── scene motion (design plan §7.1–7.2), framed chapters: when a panel reaches the reading line its title's words
+// sharpen out of a blur, its date follows, its paragraphs rise 12 px; a part's statement screen sharpens the same way.
+// Each plays once. Reading text is never blurred and never tied to the scroll.
+if (fr && !reduced) {
+  const { words, blurIn, DUR } = await import('./motion.js');
+  const once = (el, margin, fn) => { const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); fn(); } }, { rootMargin: margin }); io.observe(el); };
+  $$('.sc__panel').forEach(panel => {
+    const t = $('.sc__title', panel), d = $('.sc__date', panel);
+    const paras = [...($('.sc__body', panel)?.children || []), ...$$(':scope > .sc__block, :scope > figure', panel)];
+    gsap.set([t, d], { opacity: 0 }); gsap.set(paras, { opacity: 0, y: 12 });
+    once(panel, '0px 0px -35% 0px', () => {
+      gsap.set(t, { opacity: 1 }); blurIn(words(t));
+      blurIn(d, { dur: DUR.fade, shuffle: false, delay: 0.1 });
+      gsap.to(paras, { opacity: 1, y: 0, duration: DUR.fade, ease: 'm.expo', stagger: 0.08, delay: 0.2, clearProps: 'transform' });
+    });
+  });
+  $$('.part--st').forEach(h => {
+    const st = $('[data-st]', h), num = $('.part__num', h), fp = $('.part__fps', h);
+    gsap.set([st, num, fp], { opacity: 0 });
+    once(h, '0px 0px -40% 0px', () => {
+      blurIn(num, { dur: DUR.fade, shuffle: false });
+      gsap.set(st, { opacity: 1 }); blurIn(words(st), { stagger: 0.08, delay: 0.15 });
+      gsap.to(fp, { opacity: 1, duration: DUR.fade, delay: 0.7, ease: 'm.sine' });
+    });
+  });
+}
 // a draft says so under the chapter title (or its question); a reviewed chapter shows nothing
 const draftAt = $('.ch-q .ch-wrap') || $('.ch-hero .ch-wrap');
 if (data.subject && data.status === 'draft' && draftAt) draftAt.insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
@@ -538,8 +572,9 @@ async function start() {
     setPct(0.96);
     world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light,
       // the design plan's light: on for chapters with the overture (?look=0 turns it off), a trial elsewhere (?look=2)
-      look: +(new URLSearchParams(location.search).get('look') ?? (ov ? 2 : 0)), paper: ov ? { ink: data.ink || CFG.accent || '#6d3fd0' } : null });
+      look: +(new URLSearchParams(location.search).get('look') ?? (ov ? 2 : 0)), paper: ov ? { ink: data.ink || CFG.accent || '#6d3fd0' } : null, edge: fr ? 76 : 0 });
     window.__meridianWorld = world; // stats for checks in the preview
+    if (world && fr) world.setLook({ colour: data.ink || CFG.accent || '#6d3fd0' });
     if (world) for (const s of scenes) if (s.map && s.map.section && s.map.relief3d) {
       const fig = $(`[data-xs="${s.id}"]`), x = s.map.section;
       world.profile(s.map.relief3d.site, x.from, x.to).then(sec => { if (fig && sec) drawSection(fig, sec); });
@@ -563,6 +598,18 @@ async function start() {
     if (world) world.setProgress(ep);
     if (ov) ov.scroll(y, world);
     if (fr) { fr.setPart(p < -0.5 ? 0 : partOf(Math.min(N - 1, Math.max(0, Math.round(p))))); root.classList.toggle('is-pre', p < -0.25); }
+    if (fr && world) {
+      // the reading grade: full while a panel holds, gone a quarter of the way into a flight
+      const dim = p < -0.5 ? 0 : 1 - smooth(0.02, 0.25, Math.abs(p - Math.round(p)));
+      // the light between parts: it rises as the camera leaves a part and recedes before the next part's statement
+      let wash = 0, between = false;
+      for (let k = 1; k < parts.length; k++) {
+        const b = parts[k].first;
+        if (p > b - 1 && p < b) { const f = p - (b - 1); between = f > 0.12 && f < 0.95; if (!reduced) wash = 0.75 * smooth(0.06, 0.3, f) * (1 - smooth(0.34, 0.6, f)); }
+      }
+      world.setLook({ dim, wash });
+      root.classList.toggle('is-part', between); // the ribbon, legend and labels step aside for the part's statement
+    }
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
   });

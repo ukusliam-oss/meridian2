@@ -4,7 +4,7 @@
 // shadows, warm highlights), the vignette and a fixed one-pixel grain. Runs only when the engine draws a frame.
 import {
   WebGLRenderTarget, HalfFloatType, RGBAFormat, LinearFilter, ShaderMaterial, Mesh, PlaneGeometry, Scene,
-  OrthographicCamera, Vector2, NoBlending, AdditiveBlending,
+  OrthographicCamera, Vector2, Vector3, NoBlending, AdditiveBlending,
 } from 'three';
 
 const VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
@@ -26,8 +26,8 @@ const UP = `uniform sampler2D uSrc; uniform vec2 uPx; uniform float uW; varying 
   void main(){ vec3 c = (t(vec2(-1,-1)) + t(vec2(1,-1)) + t(vec2(-1,1)) + t(vec2(1,1))) * .0625
     + (t(vec2(-1,0)) + t(vec2(1,0)) + t(vec2(0,-1)) + t(vec2(0,1))) * .125 + t(vec2(0)) * .25;
     gl_FragColor = vec4(c * uW, 1.); }`;
-const COMP = `uniform sampler2D uSrc, uBloom; uniform float uBloomK, uExposure, uShoulder, uGrade, uVignette, uGrain;
-  uniform vec2 uRes; varying vec2 vUv; ${LUMA}
+const COMP = `uniform sampler2D uSrc, uBloom; uniform float uBloomK, uExposure, uShoulder, uGrade, uVignette, uGrain, uWash, uDim, uDimSide;
+  uniform vec2 uRes, uWashC; uniform vec3 uWashCol; varying vec2 vUv; ${LUMA}
   float h1(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main(){
     vec3 c = texture2D(uSrc, vUv).rgb * uExposure + texture2D(uBloom, vUv).rgb * uBloomK;
@@ -40,6 +40,14 @@ const COMP = `uniform sampler2D uSrc, uBloom; uniform float uBloomK, uExposure, 
     float neutral = 1. - smoothstep(.02, .12, chroma);
     float sh = (1. - smoothstep(0., .25, lm)) * uGrade * neutral, hi = smoothstep(.6, 1., lm) * uGrade * neutral;
     c *= vec3(1. - .5 * sh, 1., 1. + .6 * sh) * vec3(1. + .25 * hi, 1. + .08 * hi, 1. - .2 * hi);
+    // the light between parts (plan §8.5): the subject's colour washes the screen from the globe outwards, as light
+    // (a screen blend, so it brightens and never paints), at most about 60% of the way to white
+    if (uWash > 0.) {
+      vec2 w = vUv - uWashC; w.x *= uRes.x / uRes.y;
+      c = 1. - (1. - c) * (1. - uWashCol * uWash * (.45 + .55 * (1. - smoothstep(0., 1.3, length(w)))));
+    }
+    // the reading grade (plan §8.6): the half of the screen behind the panel is a little darker while a panel is read
+    if (uDim > 0.) c *= 1. - .12 * uDim * (uDimSide < .5 ? 1. - smoothstep(.36, .56, vUv.x) : 1. - smoothstep(.38, .62, vUv.y));
     vec2 q = vUv - .5; q.x *= uRes.x / uRes.y;
     c *= 1. - uVignette * smoothstep(.35, 1.05, length(q));
     c += (h1(floor(gl_FragCoord.xy)) - .5) * uGrain * (1. - .6 * lm);
@@ -65,7 +73,8 @@ export function createPost(renderer, { levels = 5, phone = false, samples = null
   const up = new ShaderMaterial({ vertexShader: VERT, fragmentShader: UP, uniforms: { uSrc: { value: null }, uPx: { value: new Vector2() }, uW: { value: 1 } }, blending: AdditiveBlending, depthTest: false, transparent: true });
   const comp = new ShaderMaterial({
     vertexShader: VERT, fragmentShader: COMP, blending: NoBlending, depthTest: false,
-    uniforms: { uSrc: { value: null }, uBloom: { value: null }, uBloomK: { value: .5 }, uExposure: { value: 1 }, uShoulder: { value: .8 }, uGrade: { value: .5 }, uVignette: { value: 0 }, uGrain: { value: .012 }, uRes: { value: new Vector2(1, 1) } },
+    uniforms: { uSrc: { value: null }, uBloom: { value: null }, uBloomK: { value: .5 }, uExposure: { value: 1 }, uShoulder: { value: .8 }, uGrade: { value: .5 }, uVignette: { value: 0 }, uGrain: { value: .012 }, uRes: { value: new Vector2(1, 1) },
+      uWash: { value: 0 }, uWashC: { value: new Vector2(.5, .5) }, uWashCol: { value: new Vector3(1, 1, 1) }, uDim: { value: 0 }, uDimSide: { value: 0 } },
   });
   const copy = new ShaderMaterial({ vertexShader: VERT, fragmentShader: 'uniform sampler2D uSrc; varying vec2 vUv; void main(){ gl_FragColor = texture2D(uSrc, vUv); }', uniforms: { uSrc: { value: null } }, blending: NoBlending, depthTest: false, depthWrite: false });
   const qX = quad(copy), qB = quad(bright), qD = quad(down), qU = quad(up), qC = quad(comp);
@@ -77,6 +86,10 @@ export function createPost(renderer, { levels = 5, phone = false, samples = null
     set exposure(e) { params.uExposure.value = e; }, get exposure() { return params.uExposure.value; },
     set grade(g) { params.uGrade.value = g; },
     set shoulder(v) { params.uShoulder.value = v; },
+    // the light between parts: amount 0 … 1, its colour (display values) and centre (0..1, y up)
+    wash(k, col, cx, cy) { params.uWash.value = k; if (col) params.uWashCol.value.copy(col); if (cx != null) params.uWashC.value.set(cx, cy); },
+    // the reading grade's darkening behind the panel: 0 … 1, on the left half (wide screens) or the bottom (phones)
+    dim(k, bottom = false) { params.uDim.value = k; params.uDimSide.value = bottom ? 1 : 0; },
     set vignette(v) { params.uVignette.value = v; },
     set grain(g) { params.uGrain.value = g; },
     setSize(w, h, dpr) {
