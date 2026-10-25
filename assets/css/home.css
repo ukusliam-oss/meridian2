@@ -1,0 +1,46 @@
+/* The home (design plan §6.3, after Cartier's home; home.js): paper and its globes on a fixed stage, a sticky first
+   screen with the title's lock-up through the three subjects, then the dark stage for the rest. frame.css has the frame,
+   the paper loader and the lock-up; this file places them on the home. */
+
+.home { --paper: #ececea; --paper-ink: #212529; background: #05060a; }
+.hm__stage { position: fixed; inset: 0; z-index: 0; }
+.hm__stage canvas { display: block; width: 100%; height: 100%; }
+.home main > section:not(.hm), .home .footer { position: relative; z-index: 1; }
+.hm { position: relative; z-index: 1; height: 450svh; }
+.hm__screen { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+
+/* each chapter is a link laid over its globe: round, sized and moved by home.js; the canvas draws the globe */
+.hm__rows { position: absolute; inset: 0; }
+.hm__obj { position: absolute; left: 0; top: 0; border-radius: 50%; color: var(--paper-ink); text-decoration: none; will-change: transform; }
+.hm__obj.is-off { pointer-events: none; visibility: hidden; }
+.hm__obj:focus-visible { outline: 1px solid currentColor; outline-offset: 8px; }
+.hm__obj > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Cartier's "DISCOVER …" line: above the title, in the frame's capitals */
+.hm__discover { position: absolute; left: 0; right: 0; bottom: calc(40px + var(--lock-h, 260px) + 26px); margin: 0; text-align: center; color: var(--paper-ink); opacity: 0; pointer-events: none; }
+.hm__lock { z-index: 2; }
+.hm__label { display: inline-block; color: inherit; text-decoration: none; transition: opacity var(--dur-ui) var(--ease-sine); }
+.hm__label:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; }
+.hm__label:focus-visible { outline: 1px solid currentColor; outline-offset: 6px; }
+
+/* the stage after the flood: the sections keep site.css's look, on the night */
+.home .section { background: transparent !important; }
+.home .section + .section { border-top: 1px solid rgb(255 255 255 / .06); }
+
+@media (max-width: 760px) {
+  .hm__discover { bottom: calc(env(safe-area-inset-bottom) + 64px + var(--lock-h, 200px) + 20px); }
+}
+/* without WebGL there is no paper: the chapters are a plain list under the title */
+.no-webgl .hm__rows { position: absolute; inset: auto 0 calc(40px + var(--lock-h, 260px) + 48px); display: grid; justify-items: center; gap: 28px; }
+.no-webgl .hm__row { display: grid; gap: 10px; justify-items: center; }
+.no-webgl .hm__obj { position: static; width: auto !important; height: auto !important; transform: none !important; border-radius: 0; color: #ece9e1; visibility: visible; pointer-events: auto; }
+.no-webgl .hm__obj > span { position: static; width: auto; height: auto; clip: auto; display: block; text-align: center; }
+.no-webgl .hm__lock, .no-webgl .hm__discover { color: #ece9e1; }
+.hm__words { position: absolute; inset: 0; pointer-events: none; }
+.hm__words > * { pointer-events: auto; }
+/* on the stage the sections scroll under the frame: a band of night under the top edge keeps its capitals clear */
+.home .fr::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: calc(var(--frame) + 72px); z-index: -1; pointer-events: none;
+  background: linear-gradient(#05060a 35%, rgb(5 6 10 / 0)); opacity: var(--fr-shade, 0); }
+/* the subject rings belong to the paper screen and leave with it */
+.home .fr__parts { transition: opacity var(--dur-ui2) var(--ease-sine), visibility var(--dur-ui2); }
+.home:not(.is-paper) .fr__parts { opacity: 0; visibility: hidden; }

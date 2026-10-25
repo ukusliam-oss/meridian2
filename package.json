@@ -2,14 +2,13 @@
   "name": "meridian",
   "private": true,
   "type": "module",
-  "description": "IGCSE Individuals & Societies revision site — History 0470, Economics 0455, Geography 0460",
+  "description": "IGCSE Individuals & Societies revision site \u2014 History 0470, Economics 0455, Geography 0460",
   "scripts": {
-    "dots": "node tools/build-dots.mjs 18000",
-    "build": "npm run dots && esbuild src/globe.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/globe.js",
     "maps": "node tools/build-maps.mjs",
     "world": "esbuild src/world/engine.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world.js && esbuild src/world/paint-worker.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world-paint.js",
     "lab": "esbuild src/world/lab.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/design-lab.js",
-    "serve": "python3 -m http.server 5183"
+    "serve": "python3 -m http.server 5183",
+    "home": "esbuild src/world/home.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/home-world.js"
   },
   "devDependencies": {
     "d3-geo": "3.1.1",

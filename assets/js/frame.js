@@ -1,8 +1,9 @@
 // The chapter's frame (design plan §6.1): no bars, only small capitals on the four edges at one margin (--frame).
 //   top left     MENU, a drawer with the whole site (home, the three subjects, their chapters)
 //   top centre   the wordmark, home
-//   top right    the subject, back to its hub (Cartier's close)
-//   right middle the parts as numerals in rings; the part being read is lit, a hover names it, a click goes there
+//   top right    the subject, back to its hub (Cartier's close); the home has none
+//   right middle the parts as numerals in rings (the home's are its three subjects); the part being read is lit, a
+//                hover names it, a click goes there
 //   bottom right SOUND on or off
 //   bottom left  the overture's "Scroll to begin" (paper only)
 // The frame's ink follows the page: dark on the paper, light on the stage (tone), with a soft shade in the corners
@@ -18,7 +19,8 @@ const ARROW = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" strok
 const INK = (col, seed) => `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><defs><filter id='f' x='-30%' y='-30%' width='160%' height='160%'><feTurbulence type='fractalNoise' baseFrequency='.032' numOctaves='3' seed='${seed}'/><feDisplacementMap in='SourceGraphic' scale='36'/><feGaussianBlur stdDeviation='2.2'/></filter><radialGradient id='g'><stop offset='0' stop-color='${col}' stop-opacity='.42'/><stop offset='.62' stop-color='${col}' stop-opacity='.5'/><stop offset='.84' stop-color='${col}' stop-opacity='.86'/><stop offset='1' stop-color='${col}' stop-opacity='0'/></radialGradient></defs><circle cx='100' cy='100' r='66' fill='url(#g)' filter='url(#f)'/></svg>`)}")`;
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-export function createFrame({ data, parts, goTo }) {
+// base: the way from this page to the site's root ('../' in a chapter, '' on the home)
+export function createFrame({ data, parts, goTo, base = '../', home = false }) {
   const root = document.documentElement;
   root.classList.add('has-frame');
   const subj = site.subjects.find(s => s.id === (data.subject || 'history')) || site.subjects[0];
@@ -27,9 +29,9 @@ export function createFrame({ data, parts, goTo }) {
   el.className = 'fr'; el.setAttribute('data-frame', '');
   el.innerHTML = `
     <button class="fr__menu fr-ui" type="button" aria-expanded="false" aria-controls="fr-drawer"><span class="fr__lines" aria-hidden="true"><i></i><i></i></span><span>Menu</span></button>
-    <a class="fr__word" href="../${site.home}" aria-label="Meridian, home"><span class="fr__name">Meridian</span><span class="fr__sub fr-ui">${esc(data.lockup?.sub || subj.name)}</span></a>
-    <a class="fr__subj fr-ui" href="../${subj.href}">${esc(subj.name)}<span class="fr__x" aria-hidden="true">×</span></a>
-    <nav class="fr__parts" aria-label="Parts of this chapter">${parts.map((p, k) => `<button class="fr__part" type="button" data-part="${k}" aria-label="Part ${k + 1}: ${esc(p.name)}"><span class="fr__num">${ROMAN[k] || k + 1}</span><span class="fr__pname fr-ui">${esc(p.name)}</span></button>`).join('')}</nav>
+    <a class="fr__word" href="${base}${site.home}" aria-label="Meridian, home"><span class="fr__name">Meridian</span><span class="fr__sub fr-ui">${esc(data.lockup?.sub || subj.name)}</span></a>
+    ${home ? '' : `<a class="fr__subj fr-ui" href="${base}${subj.href}">${esc(subj.name)}<span class="fr__x" aria-hidden="true">×</span></a>`}
+    <nav class="fr__parts" aria-label="${home ? 'Subjects' : 'Parts of this chapter'}">${parts.map((p, k) => `<button class="fr__part" type="button" data-part="${k}" aria-label="${home ? '' : `Part ${k + 1}: `}${esc(p.name)}"><span class="fr__num">${ROMAN[k] || k + 1}</span><span class="fr__pname fr-ui">${esc(p.name)}</span></button>`).join('')}</nav>
     <button class="fr__sound fr-ui" type="button" aria-pressed="true"></button>
     <span class="fr__hint"><span class="fr__hint-in fr-ui"><span class="fr__ring">${ARROW}</span>Scroll to begin</span></span>`;
   document.body.appendChild(el);
@@ -43,10 +45,10 @@ export function createFrame({ data, parts, goTo }) {
     <div class="fr-drawer__panel">
       <button class="fr-drawer__close fr-ui" type="button" data-close><span aria-hidden="true">×</span> Close</button>
       <nav class="fr-drawer__nav" aria-label="Site">
-        <a class="fr-drawer__home fr-ui" href="../${site.home}">Home</a>
+        <a class="fr-drawer__home fr-ui" href="${base}${site.home}">Home</a>
         ${site.subjects.map(s => `<section class="fr-drawer__subj" style="--c:var(--${s.id === 'history' ? 'hist' : s.id === 'economics' ? 'econ' : 'geo'})">
-          <a class="fr-drawer__name" href="../${s.href}"><span>${esc(s.name)}</span><span class="fr-ui">${s.code}</span></a>
-          <ul>${s.chapters.map(c => `<li><a href="../${c.href}"${c.href === here ? ' aria-current="page"' : ''}><span class="fr-drawer__ch">${esc(c.title)}</span><span class="fr-ui">${esc(c.note)}</span></a></li>`).join('')}</ul>
+          <a class="fr-drawer__name" href="${base}${s.href}"><span>${esc(s.name)}</span><span class="fr-ui">${s.code}</span></a>
+          <ul>${s.chapters.map(c => `<li><a href="${base}${c.href}"${c.href === here ? ' aria-current="page"' : ''}><span class="fr-drawer__ch">${esc(c.title)}</span><span class="fr-ui">${esc(c.note)}</span></a></li>`).join('')}</ul>
         </section>`).join('')}
       </nav>
     </div>`;
@@ -72,7 +74,7 @@ export function createFrame({ data, parts, goTo }) {
 
   const menuBtn = $('.fr__menu', el), word = $('.fr__word', el), sub = $('.fr__sub', el), subjLink = $('.fr__subj', el);
   const partsEl = $('.fr__parts', el), partBtns = $$('.fr__part', el), soundBtn = $('.fr__sound', el), hintOuter = $('.fr__hint', el), hint = $('.fr__hint-in', el);
-  partBtns.forEach(b => b.addEventListener('click', () => goTo(parts[+b.dataset.part].first)));
+  partBtns.forEach(b => b.addEventListener('click', () => goTo(home ? +b.dataset.part : parts[+b.dataset.part].first)));
 
   let open = false, lastFocus = null;
   const items = () => $$('a, button', drawer);
@@ -112,7 +114,7 @@ export function createFrame({ data, parts, goTo }) {
   return {
     el, menuBtn, word, sub, subjLink, partsEl, soundBtn, hint,
     // the corner capitals and the part rings, for the overture's entrance
-    edges: [menuBtn, subjLink, partsEl],
+    edges: [menuBtn, subjLink, partsEl].filter(Boolean),
     showSound(on) { soundBtn.innerHTML = `${SPEAKER(on)}<span>Sound ${on ? 'on' : 'off'}</span>`; soundBtn.setAttribute('aria-pressed', String(on)); soundBtn.setAttribute('aria-label', on ? 'Sound on: turn it off' : 'Sound off: turn it on'); },
     // the part being read (k), lit among the rings
     setPart(k) { if (k === part) return; part = k; partBtns.forEach((b, n) => { b.classList.toggle('is-on', n === k); b.setAttribute('aria-current', String(n === k)); }); },

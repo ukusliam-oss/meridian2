@@ -151,6 +151,7 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
   });
   const sBake = quad(bakeM), sBake2 = quad(bake2M), sInit = quad(initM), sSpeed = quad(speedM), sStep = quad(stepM), sComp = quad(compM);
   let paper = null, paper2 = null, tA = null, tB = null, tS = null, css = [0, 0], cells = [0, 0], obj = null;
+  const kept = new Map(); // fields kept by key (the home's globes), so a hover never waits for a relaxation
 
   const relight = () => {
     bake2M.uniforms.uA.value = paper.texture; bake2M.uniforms.uSize.value.set(...css);
@@ -165,13 +166,22 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
       renderer.setRenderTarget(paper); renderer.render(sBake, cam);
       relight();
       compM.uniforms.uPaper.value = paper.texture; compM.uniforms.uPaper2.value = paper2.texture; compM.uniforms.uCss.value.set(w, h);
+      kept.forEach(k => k.t.dispose()); kept.clear();
       if (obj) api.source(...obj);
     },
-    // the ink's source: a disc at (x, y) CSS px, radius r. Relaxes the arrival time over the whole page.
-    source(x, y, r) {
+    // the ink's source: a disc at (x, y) CSS px, radius r. Relaxes the arrival time over the whole page; with a key the
+    // field is kept, and asking again for the same key and disc costs nothing
+    source(x, y, r, key) {
       obj = [x, y, r];
       cells = [Math.ceil(css[0] / cell), Math.ceil(css[1] / cell)];
-      tA?.dispose(); tB?.dispose(); tA = rt(...cells, HalfFloatType); tB = rt(...cells, HalfFloatType);
+      const use = k => {
+        tA = k.t; compM.uniforms.uT.value = tA.texture; compM.uniforms.uInkSize.value.set(...cells);
+        compM.uniforms.uObj.value.set(x, y, r); compM.uniforms.uR.value = r / cell; compM.uniforms.uTau.value = r / cell * .3; compM.uniforms.uFeather.value = r / cell * .38;
+      };
+      const hit = key != null && kept.get(key);
+      if (hit && hit.x === x && hit.y === y && hit.r === r) return use(hit);
+      if (tA && ![...kept.values()].some(k => k.t === tA)) tA.dispose();
+      tA = rt(...cells, HalfFloatType); tB = rt(...cells, HalfFloatType);
       const c = new Vector2(x / cell, (css[1] - y) / cell);
       initM.uniforms.uSize.value.set(...cells); initM.uniforms.uC.value.copy(c); initM.uniforms.uR.value = r / cell;
       renderer.setRenderTarget(tA); renderer.render(sInit, cam);
@@ -187,10 +197,11 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
         [tA, tB] = [tB, tA];
       }
       renderer.readRenderTargetPixels(tA, 0, 0, 1, 1, new Uint16Array(4)); // wait for the GPU, so the time is real
-      renderer.setRenderTarget(null);
+      renderer.setRenderTarget(null); tB.dispose(); tB = null;
       api.stats.inkMs = performance.now() - t0; api.stats.sweeps = n;
-      compM.uniforms.uT.value = tA.texture; compM.uniforms.uInkSize.value.set(...cells);
-      compM.uniforms.uObj.value.set(x, y, r); compM.uniforms.uR.value = r / cell; compM.uniforms.uTau.value = r / cell * .3; compM.uniforms.uFeather.value = r / cell * .38;
+      const rec = { t: tA, x, y, r };
+      if (key != null) { if (hit) hit.t.dispose(); kept.set(key, rec); }
+      use(rec);
     },
     // how far the bloom has grown, as a multiple of the object's radius beyond its edge (Cartier's ≈ 1.06)
     set bloom(k) { compM.uniforms.uP.value = obj && k > 0 ? k * obj[2] / cell : -1e4; },
@@ -210,7 +221,7 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
     set light(v) { compM.uniforms.uLight.value.copy(v); bake2M.uniforms.uLight.value.copy(v); if (paper) relight(); },
     draw(target = null) { renderer.setRenderTarget(target); renderer.render(sComp, cam); },
     stats: { inkMs: 0, sweeps: 0 },
-    dispose() { [paper, paper2, tA, tB, tS].forEach(t => t?.dispose()); [bakeM, bake2M, initM, speedM, stepM, compM].forEach(m => m.dispose()); },
+    dispose() { kept.forEach(k => k.t.dispose()); [paper, paper2, tA, tB, tS].forEach(t => t?.dispose()); [bakeM, bake2M, initM, speedM, stepM, compM].forEach(m => m.dispose()); },
   };
   return api;
 }

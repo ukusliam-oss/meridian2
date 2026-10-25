@@ -1,3 +1,4 @@
+@import url(frame.css);
 /* Meridian scroll chapters (History KQ6, Economics 4.1–4.4): a scroll journey over one globe.
    The type, labels, tags and the glass rim come from site.css, so a chapter reads as the same site as the hubs.
    This file adds the globe layer, the scene panels, the pill navigator and the scene menu.
@@ -34,8 +35,6 @@
 .ch-wrap { width: min(1240px, 100% - 2 * var(--gutter)); margin-inline: auto; }
 
 /* ── loader ─────────────────────────────────────────────────────────── */
-.loader { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: var(--ink); color: #fff; transition: opacity .9s var(--ease), visibility .9s; }
-.loader.is-done { opacity: 0; visibility: hidden; }
 .loader__mid { text-align: center; display: grid; gap: 22px; justify-items: center; }
 .loader__mark { font-family: var(--serif); font-size: 34px; letter-spacing: .01em; }
 .loader__mark span { color: var(--acc); font-style: italic; }
@@ -478,83 +477,7 @@
 .sound-btn[aria-pressed="true"] { color: var(--acc); }
 @media (prefers-reduced-motion: reduce) { .loader__gate { animation: none; opacity: 1; } }
 
-/* ── overture (design plan §5, §9.4): paper at the threshold, the title's lock-up, the statement, the corners ── */
-@font-face { font-family: "Noto Serif Display"; src: url(../fonts/noto-serif-display-330.woff2) format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Noto Serif Display"; src: url(../fonts/noto-serif-display-330-italic.woff2) format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
-/* the display serif measured closest to Cartier's title face (plan §9.1): 62.5% width, weight 330 */
-.chapter { --serif: "Noto Serif Display", "Instrument Serif", Georgia, serif; }
-.has-ov { --paper: #ececea; --paper-ink: #212529; }
-.loader--paper { background: var(--paper); color: var(--paper-ink); cursor: default; }
-.loader--paper.is-gate { cursor: pointer; }
-.loader--paper:focus-visible { outline: none; }
-.loader--paper:focus-visible .ov-hint span { outline: 1px solid currentColor; outline-offset: 6px; border-radius: 2px; }
-.ov-load { display: grid; place-items: center; }
-.ov-mark { width: 56px; height: 56px; overflow: visible; }
-.ov-mark circle, .ov-mark ellipse { fill: none; stroke-width: 1.1; vector-effect: non-scaling-stroke; }
-.ov-mark__track { stroke: rgb(33 37 41 / .12); }
-.ov-mark__ring { stroke: var(--ov-ink, var(--paper-ink)); stroke-dasharray: 1 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .3s var(--ease-expo); }
-.ov-mark__mer { stroke: var(--paper-ink); transform-box: fill-box; transform-origin: 50% 50%; animation: ov-turn 3.2s var(--ease-sine) infinite; }
-@keyframes ov-turn { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.12); } }
-.ov-hint { position: absolute; left: 0; right: 0; bottom: calc(var(--frame) + 4px); text-align: center; overflow: hidden; color: var(--paper-ink); }
-.ov-hint span { display: inline-flex; align-items: center; gap: 8px; }
-/* the frame (frame.js, plan §6.1): small capitals on the four edges at one margin; dark on paper, light on the stage */
-.fr { --fr-ink: color-mix(in oklab, var(--paper-ink, #212529), #ece9e1 var(--fr-mix, 0%)); position: fixed; inset: 0; z-index: 210; pointer-events: none; color: var(--fr-ink); }
-.fr::before { content: ""; position: absolute; inset: 0; opacity: var(--fr-shade, 0); pointer-events: none;
-  background: radial-gradient(240px 120px at 0 0, rgb(5 6 10 / .68), transparent 70%), radial-gradient(260px 110px at 50% 0, rgb(5 6 10 / .55), transparent 70%),
-    radial-gradient(240px 120px at 100% 0, rgb(5 6 10 / .68), transparent 70%), radial-gradient(220px 110px at 100% 100%, rgb(5 6 10 / .62), transparent 70%),
-    radial-gradient(120px 300px at 100% 50%, rgb(5 6 10 / .7), transparent 75%), radial-gradient(260px 100px at 0 100%, rgb(5 6 10 / .35), transparent 70%); }
-.fr > * { pointer-events: auto; }
-/* the edges speak in a wide sans, as Cartier's do (Archivo at 125% width, chosen over Plex Mono on 2026-10-25) */
-@font-face { font-family: "Archivo Expanded"; src: url(../fonts/archivo-expanded-500.woff2) format("woff2"); font-weight: 500; font-display: swap; }
-.fr-ui { font: 500 12px/1.2 "Archivo Expanded", var(--mono); letter-spacing: .06em; text-transform: uppercase; }
-.fr__menu, .fr__sound { display: inline-flex; align-items: center; gap: 10px; padding: 6px 0; border: 0; background: none; color: inherit; cursor: pointer; }
-.fr__menu { position: absolute; left: var(--frame); top: calc(var(--frame) - 1px); } /* text 5 px inside the margin, top and bottom alike (Cartier: 37 px at 1440) */
-.fr__lines { display: grid; gap: 4px; width: 14px; }
-.fr__lines i { display: block; height: 1px; background: currentColor; transition: transform .4s var(--ease-quint); }
-.fr__menu:hover .fr__lines i:last-child { transform: scaleX(.6); transform-origin: left; }
-.fr__word { position: absolute; left: 0; right: 0; margin-inline: auto; width: max-content; top: var(--frame); text-align: center; color: inherit; text-decoration: none; transform-origin: 50% 0; }
-.fr__name { display: block; font: 400 24px/1 var(--serif); letter-spacing: .01em; }
-.fr__sub { display: block; margin-top: 8px; }
-.fr__subj { position: absolute; right: var(--frame); top: calc(var(--frame) - 1px); padding: 6px 0; display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
-.fr__x { font: 400 16px/1 var(--sans); }
-.fr__parts { position: absolute; right: var(--frame); top: 50%; transform: translateY(-50%); display: grid; gap: 12px; }
-.fr__part { position: relative; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: .65px solid color-mix(in oklab, currentColor 25%, transparent); background: none; color: inherit; cursor: pointer;
-  transition: border-color var(--dur-ui2) var(--ease-quint); }
-/* Cartier dims a whole ring to 0.2; here only its ring fades, the numeral keeps 0.65 (4.5:1 on paper and stage) */
-.fr__part .fr__num { opacity: .65; transition: opacity var(--dur-ui2) var(--ease-quint); }
-.fr__part:hover, .fr__part:focus-visible, .fr__part.is-on { border-color: currentColor; }
-.fr__part:hover .fr__num, .fr__part:focus-visible .fr__num, .fr__part.is-on .fr__num { opacity: 1; }
-.fr__part:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
-.fr__num { display: grid; place-items: center; height: 100%; font: 400 17px/1 var(--serif); }
-.fr__pname { position: absolute; right: calc(100% + 14px); top: 50%; translate: 0 -50%; white-space: nowrap; opacity: 0; filter: blur(5px); pointer-events: none;
-  transition: opacity var(--dur-ui) var(--ease-sine), filter var(--dur-ui) var(--ease-sine); }
-.fr__part:hover .fr__pname, .fr__part:focus-visible .fr__pname { opacity: 1; filter: none; }
-.fr__sound { position: absolute; right: var(--frame); bottom: calc(var(--frame) - 1px); gap: 8px; }
-.fr__hint { position: absolute; left: var(--frame); bottom: calc(var(--frame) - 2px); }
-.fr__hint-in { display: inline-flex; align-items: center; gap: 10px; }
-.fr__ring { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: .65px solid currentColor; }
-.fr.is-gate .fr__hint { visibility: hidden; }
-/* the drawer: the whole site, dark glass over whatever is behind */
-.fr-drawer { position: fixed; inset: 0; z-index: 260; }
-.fr-drawer__veil { position: absolute; inset: 0; background: rgb(5 6 10 / .5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.fr-drawer__panel { position: absolute; left: 0; top: 0; bottom: 0; width: min(520px, 100vw); overflow-y: auto; padding: calc(var(--frame) - 1px) var(--frame) 48px;
-  background: rgb(8 9 13 / .94); color: #ece9e1; box-shadow: 30px 0 80px -30px rgb(0 0 0 / .7); }
-.fr-drawer__close { display: inline-flex; gap: 10px; align-items: center; padding: 6px 0; border: 0; background: none; color: inherit; cursor: pointer; }
-.fr-drawer__close span { font: 400 16px/1 var(--sans); }
-.fr-drawer__nav { display: grid; gap: 40px; margin-top: 72px; }
-.fr-drawer__home { color: rgb(236 233 225 / .72); text-decoration: none; }
-.fr-drawer__home:hover { color: #fff; }
-.fr-drawer__name { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid rgb(255 255 255 / .12); color: #fff; text-decoration: none; }
-.fr-drawer__name > span:first-child { font: 400 clamp(36px, 4.6vw, 52px)/1 var(--serif); text-transform: uppercase; }
-.fr-drawer__name > .fr-ui { color: var(--c); }
-.fr-drawer__subj ul { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 4px; }
-.fr-drawer__subj li a { display: grid; gap: 4px; padding: 10px 0; color: rgb(236 233 225 / .86); text-decoration: none; }
-.fr-drawer__subj li a:hover, .fr-drawer__subj li a[aria-current="page"] { color: #fff; }
-.fr-drawer__subj li a[aria-current="page"] .fr-drawer__ch::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 10px 2px 0; border-radius: 50%; background: var(--c); }
-.fr-drawer__ch { font: 400 17px/1.35 var(--sans); }
-.fr-drawer__subj li .fr-ui { color: rgb(236 233 225 / .62); }
-/* no bars on a framed chapter; the pill waits for the first scene; the legend moves clear of the frame */
-.has-frame .nav, .has-frame .tabbar { display: none !important; }
+/* the pill waits for the first scene; the legend moves clear of the frame */
 .has-frame.is-pre .pillnav { opacity: 0; pointer-events: none; }
 /* wide screens: the pill is centred under the date ribbon, clear of the panel's column, which it covered */
 @media (min-width: 1000px) { .has-frame .pillnav { left: calc(100vw - var(--gutter) - min(620px, 100vw - 2 * var(--gutter) - 600px) / 2); } }
@@ -562,14 +485,6 @@
 
 
 .ch-hero--ov { position: relative; display: block; min-height: 100svh; padding: 0; }
-.ov-lock { position: absolute; left: 0; right: 0; bottom: 40px; margin-inline: auto; width: max-content; text-align: center; color: var(--paper-ink); }
-.ov-lock__t { font-family: var(--serif); font-weight: 400; font-size: var(--t, min(11.15vw, 19.82svh)); line-height: 1; margin: 0; }
-/* Cartier's proportions (C = capital height): the italic 0.7em and centred on the capitals, 0.24C apart, line
-   pitch 1.28C, the second line flush right; the label 0.275C, 0.69C below, centred on the whole block */
-.ov-l { display: flex; align-items: center; gap: .17em; text-transform: uppercase; white-space: nowrap; }
-.ov-l + .ov-l { justify-content: flex-end; margin-top: .2em; }
-.ov-l i { font-size: .7em; text-transform: none; }
-.ov-lock__lab { margin: .5em 0 0; font: 400 max(12px, calc(var(--t, 160px) * .195)) / 1 var(--serif); letter-spacing: .02em; text-transform: uppercase; }
 .ch-q { min-height: 100svh; display: grid; place-items: center; padding: 18vh 0; text-align: center; }
 .ch-q .ch-wrap { display: grid; gap: 28px; justify-items: center; }
 .ch-q__t { max-width: 15em; margin: 0; font: 400 min(5.86vw, 9.4svh) / 1 var(--serif); color: #fff; text-wrap: balance; }
@@ -580,18 +495,10 @@
 .has-ov.is-paper .nav, .has-ov.is-paper .tabbar, .has-ov.is-paper .pillnav, .has-ov.is-paper .world__vignette,
 .has-ov.is-paper .world__legend, .has-ov.is-paper .world__labels { opacity: 0; pointer-events: none; }
 @media (max-width: 760px) {
-  .ov-lock { bottom: calc(env(safe-area-inset-bottom) + 64px); }
-  .fr__name { font-size: 22px; }
-  /* phones: no part rings (the pill's menu has the parts), the sound goes top right where the subject was, the pill
-     sits on the bottom edge now there is no tab bar */
-  .fr__parts, .fr__subj { display: none; }
-  .fr__sound { bottom: auto; top: calc(var(--frame) - 1px); }
-  .fr__sound span { display: none; }
+  /* phones: the pill sits on the bottom edge now there is no tab bar (frame.css has the frame's own phone rules) */
   .has-frame .pillnav { bottom: calc(env(safe-area-inset-bottom) + var(--frame)); }
   .has-frame .world__legend { top: calc(var(--frame) + 40px); right: auto; }
 }
-/* without WebGL there is no paper: the lock-up and corners sit on the dark stage */
-.no-webgl .ov-lock, .no-webgl .fr { color: #ece9e1; }
 
 /* ── scene motion and material (design plan §7, §8.7), framed chapters ─────────────────────────────── */
 /* a part opens with a statement screen: its numeral in a ring, its name in the question's serif, its focus points */

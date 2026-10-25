@@ -13,7 +13,7 @@ LOGO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=
 FAV = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f0b45a' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9.5'/%3E%3C/svg%3E"
 SUBJ = [('history', 'History', 'hist'), ('economics', 'Economics', 'econ'), ('geography', 'Geography', 'geo')]
 
-def shell(page, title, desc, main, script, subject=''):
+def shell(page, title, desc, main, script, subject='', css=(), body=''):
     links = ''.join(f'<a class="nav__link" href="{k}.html" style="--c:var(--{c})"{" aria-current=\"page\"" if page == k else ""}>{n}</a>' for k, n, c in SUBJ)
     tabs = ''.join(f'<a href="{h}" style="--c:var(--{c})"{" aria-current=\"page\"" if page == k else ""}>{svg(k)}<span>{n}</span></a>'
                    for k, h, n, c in [('home', 'index.html', 'Home', 'text')] + [(k, f'{k}.html', n[:4] + '.' if n == 'Economics' else n[:4] + '.' if n == 'Geography' else n, c) for k, n, c in SUBJ])
@@ -29,9 +29,9 @@ def shell(page, title, desc, main, script, subject=''):
 <link rel="icon" href="{FAV}">
 <link rel="preload" href="assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/site.css">
-<script>(function(){{var d=document.documentElement,t;d.classList.add('js');try{{t=JSON.parse(localStorage.getItem('meridian:theme'))}}catch(e){{}}d.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');window.__mFallback=setTimeout(function(){{d.classList.add('reveal-fallback')}},3000)}})();</script>
+{"".join(f'<link rel="stylesheet" href="assets/css/{c}">' + chr(10) for c in css)}<script>(function(){{var d=document.documentElement,t;d.classList.add('js');try{{t=JSON.parse(localStorage.getItem('meridian:theme'))}}catch(e){{}}d.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');window.__mFallback=setTimeout(function(){{d.classList.add('reveal-fallback')}},3000)}})();</script>
 </head>
-<body{f' data-subject="{subject}"' if subject else ''}>
+<body{f' class="{body}"' if body else ''}{f' data-subject="{subject}"' if subject else ''}>
 <a class="skip" href="#content">Skip to content</a>
 <header class="nav"><div class="nav__bar">
   <a class="brand" href="index.html" aria-label="Meridian home">{LOGO}<span>Meridian</span><small>I&amp;S revision</small></a>
@@ -64,31 +64,6 @@ def shell(page, title, desc, main, script, subject=''):
 </html>
 '''
 
-def chip(k, n, c, code):
-    return f'<a class="code-chip" href="{k}.html" style="--c:var(--{c})"><b>{n}</b>{code}</a>'
-
-LENSES = [
-  ('history', 'hist', '01', 'History 0470', 'International relations <em>since 1919</em>',
-   'Six Core key questions, from the Treaty of Versailles to the collapse of Soviet control in Eastern Europe, plus one depth study.',
-   [('6', 'Core key questions'), ('5', 'depth studies'), ('3', 'components')]),
-  ('economics', 'econ', '02', 'Economics 0455', 'Markets, government <em>and trade</em>',
-   'Six topics, from the basic economic problem to international trade and globalisation. Includes an interactive supply and demand diagram.',
-   [('6', 'topics'), ('40', 'questions in Paper 1'), ('80', 'marks in Paper 2')]),
-  ('geography', 'geo', '03', 'Geography 0460', 'Physical and <em>human geography</em>',
-   'Ten topics, from river environments to resource provision, and the 16 detailed specific examples you need for the exam.',
-   [('10', 'topics'), ('16', 'specific examples'), ('2', 'written papers')]),
-]
-lens_html = ''.join(f'''
-    <section class="lens" id="lens-{k}" aria-labelledby="lens-{k}-h">
-      <div class="wrap"><article class="lens__card" style="--c:var(--{c})" data-reveal>
-        <p class="lens__num"><b>{num}</b>{label}</p>
-        <h2 class="h2" id="lens-{k}-h">{h}</h2>
-        <p class="muted" style="font-size:16px;line-height:1.55">{p}</p>
-        <ul class="lens__stats">{''.join(f'<li><b data-count="{n}">{n}</b>{t}</li>' for n, t in stats)}</ul>
-        <a class="btn btn--accent" href="{k}.html" style="justify-self:start">Go to {label.split()[0]} <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
-      </article></div>
-    </section>''' for k, c, num, label, h, p, stats in LENSES)
-
 def change(k, name, code, level, items, foot):
     lis = ''.join(f'<li><b>{t}</b><span>{v}</span></li>' for t, v in items)
     return f'''<article class="card pad change" data-reveal data-spot style="--accent:var(--{k});--accent-deep:var(--{k}-deep)">
@@ -118,41 +93,23 @@ changes = ''.join([
     ('Examples', W('case studies', '16 detailed specific examples')),
   ], 'All 16 detailed specific examples are listed on the <a href="geography.html#examples">Geography page</a>.'),
 ])
-doors = ''.join(f'''<a class="card door" href="{k}.html" data-spot data-reveal style="--c:var(--{c})">
-      <div class="door__top"><span class="door__code">IGCSE {code}</span><span class="door__glyph">{svg(k, 64)}</span></div>
-      <div><h3 class="h2">{n}</h3><p>{p}</p></div>
-      <span class="door__go">Start revising <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></span></a>'''
-  for k, n, c, code, p in [
-    ('history', 'History', 'hist', '0470', 'Core key questions, depth studies, an interactive timeline from 1919 to 1991 and model answer plans.'),
-    ('economics', 'Economics', 'econ', '0455', 'All six topics, an interactive supply and demand diagram, and guidance on analysis and evaluation.'),
-    ('geography', 'Geography', 'geo', '0460', 'All ten topics, an interactive demographic transition model and the 16 detailed specific examples.')])
-
 home_main = f'''
-<div class="scope" data-tone="dark" data-globe-scope>
-  <div class="scope__stage"><div class="globe" aria-hidden="true"></div><div class="grain"></div></div>
-  <div class="scope__content">
-    <section class="hero" aria-labelledby="hero-h">
-      <div class="wrap"><div class="hero__copy">
-        <p class="eyebrow">Cambridge IGCSE · Individuals and Societies</p>
-        <h1 class="display" id="hero-h" data-split="now">History, Economics <em>and Geography</em></h1>
-        <p class="lede">Revision notes, interactive diagrams and exam technique for Cambridge IGCSE History (0470), Economics (0455) and Geography (0460). Updated for the syllabuses examined from 2027.</p>
-        <div class="hero__cta">
-          <a class="btn btn--primary" href="#subjects">Choose a subject <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
-          <a class="btn btn--ghost" href="#changes">Syllabus changes for 2027</a>
-        </div>
-      </div></div>
-      <div class="hero__foot"><div class="wrap">
-        <div class="codes">{chip('history', 'History', 'hist', '0470')}{chip('economics', 'Economics', 'econ', '0455')}{chip('geography', 'Geography', 'geo', '0460')}</div>
-        <span class="scroll-cue"><span></span>Scroll</span>
-      </div></div>
-    </section>{lens_html}
+<div class="loader loader--paper" data-loader aria-hidden="true"><div class="ov-load">
+  <svg class="ov-mark" viewBox="0 0 64 64"><circle class="ov-mark__track" cx="32" cy="32" r="27"/><circle class="ov-mark__ring" cx="32" cy="32" r="27" pathLength="1" data-ov-ring/><ellipse class="ov-mark__mer" cx="32" cy="32" rx="11" ry="27"/></svg>
+</div></div>
+<div class="hm__stage" data-home-stage aria-hidden="true"></div>
+<section class="hm" data-home aria-labelledby="hm-title">
+  <div class="hm__screen">
+    <div class="hm__rows" data-home-rows></div>
+    <div class="hm__words" data-home-words>
+    <p class="hm__discover fr-ui" data-home-discover aria-hidden="true"></p>
+    <div class="ov-lock hm__lock" data-ov-lock>
+      <h1 class="ov-lock__t" id="hm-title" data-ov-title><span class="sr-only">Meridian: </span><span class="ov-l"><span>Individuals</span></span><span class="ov-l"><i>and</i><span>Societies</span></span></h1>
+      <a class="ov-lock__lab hm__label" data-home-label href="history.html">History · 0470</a>
+    </div>
+    </div>
   </div>
-</div>
-
-<section class="section" id="subjects"><div class="wrap">
-  <header class="section-head"><p class="eyebrow">Subjects</p><h2 class="h2" data-split><em>Choose</em>a subject</h2></header>
-  <div class="doors">{doors}</div>
-</div></section>
+</section>
 
 <section class="section" id="changes" style="background:var(--bg-2)"><div class="wrap">
   <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Syllabus changes</p><h2 class="h2" data-split><em>What has changed</em>for 2027</h2></div>
@@ -173,7 +130,7 @@ home_main = f'''
   <div data-mount="daily" data-reveal></div>
 </div></section>'''
 
-(ROOT / 'index.html').write_text(shell('home', 'Meridian | IGCSE I&S revision', 'Revision notes, interactive diagrams and exam technique for Cambridge IGCSE History 0470, Economics 0455 and Geography 0460, for exams from 2027.', home_main, 'home.js'))
+(ROOT / 'index.html').write_text(shell('home', 'Meridian | IGCSE I&S revision', 'Revision notes, interactive diagrams and exam technique for Cambridge IGCSE History 0470, Economics 0455 and Geography 0460, for exams from 2027.', home_main, 'home.js', css=('frame.css', 'home.css'), body='home'))
 
 HEROES = {
   'history': ('History', '0470', '2027–2028 syllabus', 'The twentieth century: international relations since 1919, and one depth study.', [('6', 'Core key questions'), ('60', 'marks in Paper 1'), ('3', 'components')]),

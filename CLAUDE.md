@@ -10,7 +10,7 @@ Plain HTML/CSS/JS, no runtime framework. Preview: the `meridian` entry in `../.c
 (python http.server on :5183).
 
 ```
-npm run build          # bake land dots + bundle the three.js globe → assets/js/globe.js
+npm run home           # bundle the home's paper and globes (src/world/home.js) → assets/js/home-world.js
 python3 tools/pages.py # regenerate index/history/economics/geography.html from one shell
 ```
 
@@ -44,8 +44,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - `assets/js/visuals.js` — subject hero art: year ribbon, live S&D, canvas contour map. History's years and the S&D
   diagram never sit behind the title: `heroArt` measures the box beside the title word and the box above the title
   block on every resize and puts the art in whichever lets it draw larger (`--art-l/t/w/h` on `.s-hero`).
-- `src/globe.js` → `assets/js/globe.js` — the home globe (three 0.186, custom shaders), driven by
-  `setProgress(f)`: 0 hero, 1 History, 2 Economics, 3 Geography.
+- The home (`index.html`, built by `tools/pages.py`; `assets/js/home.js`, `assets/css/home.css`, `src/world/home.js` →
+  `assets/js/home-world.js`) is described under Design and motion. The old dot globe (`src/globe.js`) was removed
+  with it on 2026-10-25.
 
 ## History scroll chapters (plan: `../Meridian History 설계 계획서.md`)
 - `history/kq6.html` — KQ6 chapter: 33 scenes over one globe. `assets/js/chapter.js` renders the scenes from
@@ -115,7 +116,24 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - The plan measures Cartier's "Le Chœur des Pierres" (opening timeline, proportions, curves, its title face, paper and
   ink) and translates it: an overture where the chapter title is born mid-screen at 1.5× and glides home in 2 s, a
   frame UI instead of bars, three speeds, light and material on the globe, Noto Serif Display, paper at the thresholds
-  and the dark stage for scenes, joined by ink. Phases 4–5 (hubs and home, wrap-up) are not built.
+  and the dark stage for scenes, joined by ink. The home is rebuilt on the same frame and overture (below); the hubs
+  and phase 5 (wrap-up) are not done.
+- The home (2026-10-25, after Cartier's home): the chapters' paper, frame and overture. The title "INDIVIDUALS / *and*
+  SOCIETIES" in the lower third, and in the middle each chapter as a small globe drawn in its subject's ink (the chapter's
+  paper globe in miniature, turned to its hero view, from `globe` in `assets/js/data/site.js`; a chapter about one place
+  rings it and is a lens, `zoom`, so Paper 2 is a close-up of Hungary). The frame's rings are the three subjects and the
+  label under the title is the subject's (a link to its hub), swapped with a blur. Scrolling holds a subject's row, then
+  the next row comes up a fifth of the screen as the last one leaves (never across the title); past Geography the
+  paper floods into night as in a chapter, and the syllabus changes, command words and daily quiz follow on the stage
+  (a band of night under the top edge keeps the frame clear; the rings leave with the paper). A hover or focus blooms
+  the globe's ink (0.55 radii) and names it above the title ("Discover · …"); each globe's ink field is worked out once
+  in idle time (`sheet.source(…, key)` keeps one field per key, 26 ms each). A click glides the globe to where the
+  chapter's paper globe stands and opens the chapter on its paper loader. Overture: the loader's mark, then the title
+  born at 1.5× and gliding home at 1.75 s with the wordmark; the globes come in at 2.6 s. No gate (sound is the corner's
+  switch and starts on the first tap if it was left on). Returning within 12 hours (`store` 'overture-home', apart from
+  the chapters' 'overture'): a short version. `frame.js` takes `base` ('' on the home) and `home`. The frame, the paper
+  loader and the lock-up live in `assets/css/frame.css` (chapter.css imports it). Measured: 60 fps through the subjects
+  and the flood (p95 16.7 ms), 0.1 ms CPU per frame; `home-world.js` 161 KB gzipped (three and Natural Earth 110m land).
 - The frame (phase 2, `assets/js/frame.js`), on chapters with `lockup`: no nav bar and no phone tab bar, only 12 px
   capitals on the edges at `--frame` (32 px at 1440; text 5 px inside it, top and bottom alike, as Cartier's 37 px):
   MENU (a drawer with the whole site from `assets/js/data/site.js`; add a chapter there and in `tools/pages.py`),
@@ -297,7 +315,6 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - KQ6 on the live site (2026-10-25, empty cache, dev Mac): first load 891 KB in 21 files (borders.json 456 KB and
   world.js 171 KB compressed), globe ready in 2.6 s. Reading the whole chapter adds 4.7 MB of terrain tiles on desktop
   and 4.2 MB on a phone (counted with the engine's rules), all in the background.
-- Globe bundle 595 KB, 163 KB gzipped; 5,748 land dots from Natural Earth 110m.
 - Engine (2026-10-23, dev Mac, preview): id rasters 17–59 ms and Economics paints 160–207 ms, all in the worker; KQ6
   paints 9–19 ms in the worker. A scripted scroll through the engine test drew 202 frames at 0.88 ms CPU on average
   (worst 16 ms) and skipped 73 unchanged frames. The preview pane throttles rAF, so fps itself was not measured.
@@ -306,7 +323,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Contrast (2026-10-24, `tools/contrast.js`, folded content opened): home and the three hubs in both themes and the
   three chapter pages pass WCAG AA; KQ6 checked 1,105 text elements, the Economics chapter 1,158. Light theme tokens
   were darkened for it (`--hist` #995700, `--econ` #087a50, `--good`/`--bad`, `--text-2` .76).
-- Checked in the preview on 2026-10-22: home lenses, all three labs and every mode, flashcards,
+- Checked in the preview on 2026-10-22: the old home, all three labs and every mode, flashcards,
   quiz, light theme, 375 px phone layout (no horizontal scroll). No console errors.
 - Where practice marks come from (checked 2026-10-22; each data file's `source` shows it on the
   page): History P1 4/6/10 and the (b)/(c) levels are from the published 0470/11 June 2025 mark
