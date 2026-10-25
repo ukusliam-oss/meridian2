@@ -368,8 +368,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Mono labels are upper-case; wrap "c." in `<span class="lc">` so "c.1989" stays lower-case.
 
 ## Not done
-- Deployed 2026-10-22 with GitHub Pages from `main` (root): https://ukusliam-oss.github.io/meridian/
-  The repo is public. Every push to `main` redeploys the live site.
+- Two sites. Since 2026-10-25 this folder's `main` tracks the remote `meridian2` (github.com/ukusliam-oss/meridian2,
+  public, GitHub Pages from `main`, root): https://ukusliam-oss.github.io/meridian2/ is the paper-and-ink redesign, and
+  every push to `main` redeploys it. The remote `origin` (github.com/ukusliam-oss/meridian) is the earlier design, live at
+  https://ukusliam-oss.github.io/meridian/ and left at commit af7a163: never push to it unless asked.
 - No automated browser tests; the data checks are `tools/check-econ.mjs` and `tools/check-lab.mjs`. For colour
   contrast, run `tools/contrast.js` in the preview (`const T = await import('/tools/contrast.js'); T.unfold(); T.audit()`):
   it lists text under WCAG AA. Load the theme fresh (localStorage `meridian:theme`) and turn transitions off first: a
