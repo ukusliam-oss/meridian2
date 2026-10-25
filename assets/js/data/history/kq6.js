@@ -50,7 +50,9 @@ export default {
   sound: true, // assets/js/sound.js
   // the overture's title (assets/js/overture.js): two lines, an italic lead and capitals, the second line flush right
   lockup: { lines: [{ it: 'Behind the', caps: 'Iron' }, { caps: 'Curtain' }], label: 'Key question VI', sub: 'History · 0470' },
-  ink: '#6d3fd0', // the ink that blooms round the globe on the paper and floods it (the chapter's violet)
+  // the ink that blooms round the globe on the paper and floods it: a muted violet with the lightness and chroma of
+  // the other subjects' inks as drawn (L* 39, C 41; the chapter's #6d3fd0 had C 86 and read as a highlighter)
+  ink: '#67519f',
 
   focusPoints: [
     { id: 'FP1', text: 'Why was there opposition to Soviet control in Hungary in 1956 and Czechoslovakia in 1968, and how did the USSR react to this opposition?' },

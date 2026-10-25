@@ -190,6 +190,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   16.7–16.8 ms, no long task, 0.42 ms CPU per frame; Economics 2→12: the same, 0.64 ms. Map colours with the grade
   and wash against `?look=0`, map half: ΔE2000 0.33 (Economics) and 0.37 (Geography) weighted (worst fill 2.2, the
   sea's glint 6.7).
+- Inks are matched by measurement, not by eye: drawn on the paper, each ink's band should sit near L* 40 and chroma
+  35–45 (Economics #0f7a58: 44 / 33, Geography #1f5fae: 40 / 42, History #67519f: 39 / 41). History's interface violet
+  #6d3fd0 drew at chroma 74 and read as a highlighter, so the chapter's `ink` is its own colour. `world.setPaper({ ink })`
+  switches it live for comparisons.
 - Traps: three encodes its own materials (LineMaterial, MeshBasicMaterial) to sRGB only on the screen, never into a
   render target, while the engine's raw shaders write display values either way; post.js patches those materials to
   encode in the target too (without it the plate lines came out ΔE 13 darker). `Color.set('#hex')` stores linear

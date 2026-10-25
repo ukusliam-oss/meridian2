@@ -1179,8 +1179,9 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   return {
     setProgress(p) { progress = p; },
     // the threshold's paper (chapters with `paper`): bloom = the ink's reach in globe radii, flood = 0 paper … 1 stage
-    setPaper({ bloom, flood: f } = {}) {
+    setPaper({ bloom, flood: f, ink } = {}) {
       if (!sheet) return;
+      if (ink) { sheet.ink = ink; sheetDirty = true; dirty = true; }
       if (bloom != null && bloom !== bloomK) { bloomK = bloom; sheet.bloom = bloom; sheetDirty = true; dirty = true; }
       if (f != null && f !== flood) { flood = f; sheet.flood = f; sheetDirty = true; dirty = true; }
     },
