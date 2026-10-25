@@ -96,12 +96,9 @@ const earthFrag = /* glsl */`
   uniform vec4 uSlotA, uSlotB;      // x: value row (< 0: no data layer), y: d0, z: d1, w: ramp row
   uniform float uWA, uWB;           // inside each state, how far its values have moved towards the other state's row
   uniform float uMix, uHatch, uLook, uFade, uGlint; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
-  uniform float uInkMap, uFloodP, uFR; uniform vec3 uInkCol, uDisc; uniform vec2 uRes; uniform sampler2D uFT;
+  uniform float uInkMap, uDye, uReal; uniform vec3 uInkCol; uniform sampler2D uLandM;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv;
   vec2 lonlat() { return vec2(vUv.x * 360.0 - 180.0, vUv.y * 180.0 - 90.0); }
-  float vhash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(vhash(i), vhash(i + vec2(1, 0)), f.x), mix(vhash(i + vec2(0, 1)), vhash(i + vec2(1, 1)), f.x), f.y); }
   vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
 #ifdef HAS_DATA
   float idAt(sampler2D t, ivec2 p) { vec4 c = texelFetch(t, p, 0); return floor(c.r * 255.0 + 0.5) + 256.0 * floor(c.g * 255.0 + 0.5); }
@@ -220,41 +217,33 @@ const earthFrag = /* glsl */`
       col += vec3(1.0, 0.95, 0.86) * D * F * max(dot(n, L), 0.0) * 0.22 * wm * uGlint;
       col += uRim * rim * 0.55 * (0.3 + 0.7 * smoothstep(-0.3, 0.5, dot(n, L)));
     } else col += uRim * rim * 0.55;
-    if (uInkMap > 0.5) {
+    if (uInkMap > 0.5 && uReal < 1.0) {
       // the paper's globe (design plan §9.4, revised): an ink map. The sea is the paper, the land a watercolour wash of
-      // the chapter's ink (thicker in the valleys, granulated), a 15° graticule, the coasts and the limb drawn as fine
-      // ink lines. It becomes the real globe pixel by pixel where the scroll's flood has turned the page to night,
-      // read from the same arrival field the paper uses.
-      // inside the globe's disc the field is zero (the flood starts there), so the ink soaks in from the limb towards the
-      // middle instead, frayed by the land and a little noise, and the drawing turns into the globe as a front
-      float T = texture2D(uFT, gl_FragCoord.xy / uRes).r;
-      float rd = length(gl_FragCoord.xy - uDisc.xy) / max(uDisc.z, 1.0);
-      // frayed in screen space (a soft value noise, two octaves), so nothing gathers at the poles
-      vec2 sp = gl_FragCoord.xy / max(uDisc.z, 1.0) * 3.0;
-      float fray = (vnoise(sp) * 0.65 + vnoise(sp * 2.3 + 7.1) * 0.35) * 2.0 - 1.0;
-      T += clamp(1.0 - rd, 0.0, 1.0) * uFR * 2.6 + fray * uFR * 0.45 * step(rd, 1.0);
-      float real = smoothstep(0.05, 0.5, smoothstep(uFR * 0.3, uFR * 2.2, uFloodP - T));
-      if (real < 1.0) {
-        float sun = smoothstep(-0.45, 0.65, dot(n, normalize(uLight)));
-        // land is anything painted above a quarter: KQ6's state glazes run 0.62–0.85 with lighter bands at their edges,
-        // which a contour at 0.5 drew as dotted coasts through Europe
-        float landRaw = clamp(land.a / 0.996, 0.0, 1.0) * (1.0 - water);
-        // granulation follows the ground, not the screen: a soft noise in longitude and latitude
-        float g2 = 0.5 + 0.25 * sin(vUv.x * 900.0 + sin(vUv.y * 700.0) * 3.0) * sin(vUv.y * 820.0 + vUv.x * 160.0);
-        vec3 paperC = vec3(0.94) * (0.9 + 0.1 * sun);
-        float dens = (0.48 + 0.3 * clamp(1.0 - rel, 0.0, 1.0)) * (0.86 + 0.28 * g2);
-        float aw = max(fwidth(landRaw), 1e-3), landM = smoothstep(0.25 - aw, 0.25 + aw, landRaw);
-        vec3 ink = paperC * pow(clamp(uInkCol + 0.04, 0.02, 1.0), vec3(dens * landM));
-        float coast = 1.0 - smoothstep(0.0, aw * 1.2, abs(landRaw - 0.25)); // the coast as a contour, antialiased
-        vec2 ll = lonlat(), gd = abs(fract(ll / 15.0 + 0.5) - 0.5) * 15.0, fw = max(fwidth(ll), vec2(1e-4));
-        float grat = max(1.0 - smoothstep(0.0, fw.x * 1.1, gd.x), 1.0 - smoothstep(0.0, fw.y * 1.1, gd.y));
-        float eq = 1.0 - smoothstep(0.0, fw.y * 1.5, abs(ll.y));
-        float ndv = max(dot(n, v), 0.0), limb = 1.0 - smoothstep(0.0, fwidth(ndv) * 2.2, ndv - 0.002);
-        ink = mix(ink, uInkCol * 0.72, clamp(coast * 0.8 + grat * 0.16 + eq * 0.28 + limb * 0.85, 0.0, 1.0));
-        // the soaking front is wet: a band of the ink's colour between the drawing and the globe
-        float wetBand = real * (1.0 - real) * 4.0;
-        col = mix(mix(ink, col, real), uInkCol * 0.55, wetBand * 0.55);
-      }
+      // the chapter's ink, a 15° graticule, the coasts and the limb fine ink lines. The coast comes from a smooth land
+      // field (uLandM: Natural Earth land filled at 4096 × 2048 and blurred), so its contour is a curve at any zoom;
+      // the painted state textures stair-stepped and dotted it. As the scroll floods the page the drawing is dipped in
+      // ink (uDye: it darkens into the stage's night, the land a shade lighter, the lines going under), and then the
+      // real globe's light comes up through it (uReal): two even steps, no front to fray.
+      float sun = smoothstep(-0.45, 0.65, dot(n, normalize(uLight)));
+      float lm = texture2D(uLandM, vUv).r, aw = max(fwidth(lm), 1e-4);
+      float landM = smoothstep(0.5 - aw, 0.5 + aw, lm);
+      float coast = 1.0 - smoothstep(0.0, aw * 1.3, abs(lm - 0.5));
+      // granulation follows the ground, not the screen: a soft noise in longitude and latitude
+      float g2 = 0.5 + 0.25 * sin(vUv.x * 900.0 + sin(vUv.y * 700.0) * 3.0) * sin(vUv.y * 820.0 + vUv.x * 160.0);
+      vec3 paperC = vec3(0.94) * (0.9 + 0.1 * sun);
+      float dens = (0.5 + 0.22 * clamp(1.0 - rel, 0.0, 1.0)) * (0.88 + 0.24 * g2);
+      vec3 ink = paperC * pow(clamp(uInkCol + 0.04, 0.02, 1.0), vec3(dens * landM));
+      vec2 ll = lonlat(), gd = abs(fract(ll / 15.0 + 0.5) - 0.5) * 15.0, fw = max(fwidth(ll), vec2(1e-4));
+      float grat = max(1.0 - smoothstep(0.0, fw.x * 1.1, gd.x), 1.0 - smoothstep(0.0, fw.y * 1.1, gd.y));
+      float eq = 1.0 - smoothstep(0.0, fw.y * 1.5, abs(ll.y));
+      float ndv = max(dot(n, v), 0.0), limb = 1.0 - smoothstep(0.0, fwidth(ndv) * 2.2, ndv - 0.002);
+      ink = mix(ink, uInkCol * 0.7, clamp(coast * 0.75 + grat * 0.15 + eq * 0.25 + limb * 0.8, 0.0, 1.0));
+      // dyed as paper takes ink: layer on layer of the pigment (so the middle of the dip is a deep violet, not a grey),
+      // the drawing's lines still showing through, and at the end the night of the stage
+      vec3 soaked = ink * pow(clamp(uInkCol + 0.04, 0.02, 1.0), vec3(uDye * 2.6));
+      vec3 night = uInkCol * 0.2 + 0.015;
+      ink = mix(soaked, mix(night, night * 1.9 + 0.01, landM * 0.8), smoothstep(0.55, 1.0, uDye));
+      col = mix(ink, col, uReal);
     }
     gl_FragColor = vec4(col, uFade);
   }`;
@@ -656,7 +645,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     uQA: { value: blank }, uQB: { value: blank }, uQBoxA: { value: new Vector4() }, uQBoxB: { value: new Vector4() },
     uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
     uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uFade: { value: 1 }, uGlint: { value: 1 },
-    uInkMap: { value: 0 }, uFloodP: { value: -1e4 }, uFR: { value: 30 }, uInkCol: { value: new Vector3(.4, .32, .62) }, uDisc: { value: new Vector3(0, 0, 1) }, uRes: { value: new Vector2(1, 1) }, uFT: { value: null }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
+    uInkMap: { value: 0 }, uDye: { value: 0 }, uReal: { value: 0 }, uInkCol: { value: new Vector3(.4, .32, .62) }, uLandM: { value: null }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
     uOcean: { value: new Color('#06080d') }, uOceanLift: { value: new Color('#0c1220') }, uRim: { value: rim }, uFocus: { value: new Color(PALETTE.focus) },
   };
   if (relief) {
@@ -1027,6 +1016,37 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   // around the globe and, as the reader scrolls in, floods the page and deepens into the night of the stage.
   // The sheet is drawn at CSS size only when it changes, and laid under the globe as one texture.
   const sheet = paper && post ? createSheet(renderer, { cell: 3 }) : null;
+  // a smooth land field for the paper's ink map: Natural Earth land (lakes cut out) filled at 4096 × 2048 (2048 on
+  // phones) and blurred about 2.5 texels, so the coast drawn as its 0.5 contour is a curve at any zoom
+  const landMap = sheet ? (() => {
+    const t0 = performance.now(), Wm = phone ? 2048 : 4096, Hm = Wm / 2;
+    const c = document.createElement('canvas'); c.width = Wm; c.height = Hm;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, Wm, Hm);
+    const X = lon => (lon + 180) / 360 * Wm, Y = lat => (90 - lat) / 180 * Hm;
+    const fill = (list, colour) => {
+      g.fillStyle = colour;
+      for (const f of list) {
+        const geo = f.geometry; if (!geo) continue;
+        const polys = geo.type === 'Polygon' ? [geo.coordinates] : geo.type === 'MultiPolygon' ? geo.coordinates : [];
+        const path = new Path2D();
+        for (const poly of polys) for (const ring of poly) { ring.forEach(([x, y], k) => (k ? path.lineTo(X(x), Y(y)) : path.moveTo(X(x), Y(y)))); path.closePath(); }
+        g.fill(path, 'evenodd');
+      }
+    };
+    fill(feats.land.features, '#fff');
+    if (feats.water) fill(feats.water.lakes, '#000');
+    const out = document.createElement('canvas'); out.width = Wm; out.height = Hm;
+    const o = out.getContext('2d');
+    if ('filter' in o) { o.filter = `blur(${phone ? 1.5 : 2.5}px)`; o.drawImage(c, 0, 0); }
+    else { // no canvas filters (older Safari): down to a quarter and back up, smoothed
+      const s = document.createElement('canvas'); s.width = Wm / 4; s.height = Hm / 4;
+      const sg = s.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(c, 0, 0, s.width, s.height);
+      o.imageSmoothingQuality = 'high'; o.drawImage(s, 0, 0, Wm, Hm);
+    }
+    const t = new CanvasTexture(out); t.minFilter = LinearMipmapLinearFilter; t.anisotropy = aniso;
+    stats.landMapMs = Math.round(performance.now() - t0);
+    return t;
+  })() : null;
   if (sheet) { sheet.ink = paper.ink; sheet.glow = 0; const c = new Color(paper.ink).convertLinearToSRGB(); earthU.uInkCol.value.set(c.r, c.g, c.b); }
   let sheetRT = null, sheetDirty = true, flood = sheet ? 0 : 1, bloomK = 0, inkReady = false;
   const intro = { fade: 1, arrive: 1 };
@@ -1160,12 +1180,11 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     // the ink map while there is paper: the globe turns real where the flood has turned the page to night; its air,
     // borders and points come with the real globe (`realG`: how far that has got at the globe's own edge)
     realG = 1;
-    if (sheet && flood < 1 && inkReady) {
-      const fd = sheet.field();
-      earthU.uInkMap.value = 1; earthU.uFT.value = fd.tex; earthU.uFloodP.value = fd.p; earthU.uFR.value = fd.R;
-      renderer.getDrawingBufferSize(earthU.uRes.value);
-      const k = earthU.uRes.value.x / W; earthU.uDisc.value.set(circle[0] * k, (H - circle[1]) * k, circle[2] * k); // device px, y up
-      realG = smooth(0.05, 0.5, smooth(fd.R * 0.3, fd.R * 2.2, fd.p - fd.R));
+    if (sheet && flood < 1 && inkReady && landMap) {
+      // the flood's first fifth dyes the drawing (as the ink round the globe deepens), then over the next fifth and a
+      // half the globe's light comes up through it; both follow the scroll, so they run backwards too
+      earthU.uInkMap.value = 1; earthU.uLandM.value = landMap;
+      earthU.uDye.value = smooth(0.0, 0.2, flood); earthU.uReal.value = realG = smooth(0.12, 0.45, flood);
     } else earthU.uInkMap.value = 0;
     air.material.uniforms.uAir.value = realG;
 

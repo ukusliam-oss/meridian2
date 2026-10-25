@@ -153,13 +153,16 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   hero. The sheet is drawn at CSS size only when it changes and laid under the globe in the post target; bloom, grade
   and shoulder are off on paper so it keeps its measured values. Chapters now draw with `look` on (`?look=0` off).
 - The paper's globe is an ink map (earth shader `uInkMap`, on while there is paper): the sea is the paper, the land a
-  watercolour wash of the chapter's ink (thicker in the relief's valleys, granulated in longitude and latitude), a 15°
-  graticule with a stronger equator, coasts as an antialiased contour of the land at a quarter (KQ6's state glazes
-  made a contour at a half draw dotted coasts), and the limb as a fine line; no air, borders or points, and the sheet
-  lends it no coloured light (`sheet.glow = 0`). Scrolling turns it into the real globe pixel by pixel: the earth
-  shader reads the paper's arrival field (`sheet.field()`), and inside the globe's disc, where that field is zero, the
-  ink soaks in from the limb towards the middle (frayed by screen-space noise), with a wet band of ink at the front.
-  Its air, borders and points come with the real globe (`realG`). Paper hero at DPR 2: 15.7 ms GPU (14.1 before).
+  watercolour wash of the chapter's ink (granulated in longitude and latitude), a 15° graticule with a stronger
+  equator, the coasts and the limb as fine ink lines; no air, borders or points, and the sheet lends it no coloured
+  light (`sheet.glow = 0`). The coast is the 0.5 contour of `landMap`, Natural Earth land (lakes cut out) filled at
+  4096 × 2048 (2048 on phones) and blurred 2.5 texels on a canvas (25 ms once; older Safari without canvas filters
+  blurs by scaling down and up): the painted state textures stair-stepped at ~2 screen px per texel and dotted the
+  coast with their glaze bands. The hand-over follows the scroll in two even steps, tied to `flood`: the first fifth
+  dyes the drawing as paper takes ink (`uDye`, Beer–Lambert layers, so the middle is a deep violet rather than a grey,
+  ending in the stage's night), then from 12% to 45% the real globe's light comes up through it (`uReal`), and its air,
+  borders and points with it (`realG`). A front that soaked in from the limb was tried and dropped: frayed and cheap.
+  Paper hero at DPR 2: 13.9 ms GPU (KQ6), 13.1 ms (Geography).
 - `chapter.css` sets `--serif` to Noto Serif Display 330 inside chapters (the hubs and home still use Instrument Serif).
 - `assets/js/motion.js`: tokens (`EASE` smooth/expo/quint/io/sine/in registered as `m.*`, `DUR` ui .3, text 1, stage 2),
   `words`, `blurIn` (5 px, 1 s linear, 0.1 s apart, random order), `blurOut`, `lineOut`, `glide`/`hold` (FLIP from
