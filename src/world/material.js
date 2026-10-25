@@ -65,14 +65,16 @@ const INK_SPEED = /* glsl */`
   }`;
 const INK_STEP = /* glsl */`
   uniform sampler2D uT, uS; uniform vec2 uSize; varying vec2 vUv;
+  const vec2 OFF[16] = vec2[16](vec2(1, 0), vec2(-1, 0), vec2(0, 1), vec2(0, -1), vec2(1, 1), vec2(-1, 1), vec2(1, -1), vec2(-1, -1),
+    vec2(2, 1), vec2(-2, 1), vec2(2, -1), vec2(-2, -1), vec2(1, 2), vec2(-1, 2), vec2(1, -2), vec2(-1, -2));
   void main(){
     vec2 px = 1. / uSize;
     float speed = texture2D(uS, vUv).r;
     vec2 fibre = vec2(cos(-.42), sin(-.42)); // water runs further along the fibres
     float t = texture2D(uT, vUv).r;
-    for (int k = 0; k < 8; k++) {
-      vec2 o = k == 0 ? vec2(1, 0) : k == 1 ? vec2(-1, 0) : k == 2 ? vec2(0, 1) : k == 3 ? vec2(0, -1)
-             : k == 4 ? vec2(1, 1) : k == 5 ? vec2(-1, 1) : k == 6 ? vec2(1, -1) : vec2(-1, -1);
+    // sixteen neighbours (the knight's moves too), so a front on even paper is round, not octagonal
+    for (int k = 0; k < 16; k++) {
+      vec2 o = OFF[k];
       float along = abs(dot(normalize(o), fibre));
       float s = speed * (1. + .25 * along * along);
       t = min(t, texture2D(uT, vUv + o * px).r + length(o) / s);
@@ -83,7 +85,7 @@ const INK_STEP = /* glsl */`
 // ── composite: paper, its light, the ink, the object's shadow and the light it lets through ────────────────
 const COMPOSITE = /* glsl */`
   uniform sampler2D uPaper, uPaper2, uT; uniform vec2 uCss, uInkSize; uniform float uDpr, uDark, uP, uFlood, uR, uTau, uFeather;
-  uniform vec3 uInk, uStage, uLight; uniform vec3 uObj; // object centre (CSS px, y down) and radius
+  uniform vec3 uInk, uStage, uLight; uniform vec3 uObj; uniform float uShade; // object centre (CSS px, y down) and radius; its presence
   varying vec2 vUv;
   float h1(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main(){
@@ -120,10 +122,10 @@ const COMPOSITE = /* glsl */`
     // the object: its soft shadow on the paper (down and right of the light) and the coloured light through it
     vec2 d = px - uObj.xy; float R = uObj.z, dist = length(d) / R; vec2 dir = d / max(1e-3, length(d));
     vec2 away = -normalize(uLight.xy * vec2(1, -1));
-    float sh = exp(-max(0., length(d - away * R * .12) / R - .92) * 3.2) * .2 * (1. - deep);
+    float sh = exp(-max(0., length(d - away * R * .12) / R - .92) * 3.2) * .2 * (1. - deep) * uShade;
     if (dist > 1.) col *= 1. - sh * (1. - dens * .4);
     float glow = exp(-max(0., dist - 1.) * 3.2) * smoothstep(.55, 1., dot(dir, away) * .5 + .5) * smoothstep(0., uR * .5, p);
-    col = mix(col, max(col, uInk * 1.15 + .08), glow * .75 * (1. - deep)); // light through the object, on the paper
+    col = mix(col, max(col, uInk * 1.15 + .08), glow * .75 * (1. - deep) * uShade); // light through the object, on the paper
     gl_FragColor = vec4(col, 1.);
   }`;
 
@@ -141,8 +143,8 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
   const compM = new ShaderMaterial({
     vertexShader: VERT, fragmentShader: COMPOSITE, blending: NoBlending, depthTest: false,
     uniforms: {
-      uPaper: { value: null }, uPaper2: { value: null }, uT: { value: null }, uCss: { value: new Vector2() }, uInkSize: { value: new Vector2() }, uDpr: { value: 1 },
-      uDark: { value: dark ? 1 : 0 }, uFeather: { value: 4 }, uP: { value: -10 }, uFlood: { value: -10 }, uR: { value: 30 }, uTau: { value: 6 },
+      uShade: { value: 1 }, uPaper: { value: null }, uPaper2: { value: null }, uT: { value: null }, uCss: { value: new Vector2() }, uInkSize: { value: new Vector2() }, uDpr: { value: 1 },
+      uDark: { value: dark ? 1 : 0 }, uFeather: { value: 4 }, uP: { value: -1e4 }, uFlood: { value: -1e4 }, uR: { value: 30 }, uTau: { value: 6 },
       uInk: { value: new Color('#6d3fd0') }, uStage: { value: new Color('#05060a').convertLinearToSRGB() }, uLight: { value: new Vector3(-.55, .65, .9) },
       uObj: { value: new Vector3(0, 0, 1) },
     },
@@ -177,8 +179,8 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
       speedM.uniforms.uSize.value.set(...cells); speedM.uniforms.uC.value.copy(c);
       renderer.setRenderTarget(tS); renderer.render(sSpeed, cam);
       stepM.uniforms.uSize.value.set(...cells); stepM.uniforms.uS.value = tS.texture;
-      // enough sweeps for the front to cross the page from the disc (each sweep moves it about one cell)
-      const n = Math.ceil(Math.hypot(...cells) * 1.15);
+      // enough sweeps for the front to cross the page from the disc (each sweep moves it one or two cells)
+      const n = Math.ceil(Math.hypot(...cells) * 0.9);
       const t0 = performance.now();
       for (let k = 0; k < n; k++) {
         stepM.uniforms.uT.value = tA.texture; renderer.setRenderTarget(tB); renderer.render(sStep, cam);
@@ -191,9 +193,13 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
       compM.uniforms.uObj.value.set(x, y, r); compM.uniforms.uR.value = r / cell; compM.uniforms.uTau.value = r / cell * .3; compM.uniforms.uFeather.value = r / cell * .38;
     },
     // how far the bloom has grown, as a multiple of the object's radius beyond its edge (Cartier's ≈ 1.06)
-    set bloom(k) { compM.uniforms.uP.value = obj ? k * obj[2] / cell : -10; },
+    set bloom(k) { compM.uniforms.uP.value = obj && k > 0 ? k * obj[2] / cell : -1e4; },
     // the flood: 0 none … 1 the whole page is ink, deepened into the stage colour
-    set flood(f) { compM.uniforms.uFlood.value = f <= 0 ? -10 : f * Math.hypot(...cells) * 1.25; },
+    set flood(f) { compM.uniforms.uFlood.value = f <= 0 ? -1e4 : f * Math.hypot(...cells) * 1.25; },
+    // how present the object is (0 not yet there: no shadow, no light through it)
+    set shade(v) { compM.uniforms.uShade.value = v; }, get shade() { return compM.uniforms.uShade.value; },
+    // the globe's disc on the screen now (CSS px), for its shadow and the light it lets through
+    set object([x, y, r]) { compM.uniforms.uObj.value.set(x, y, r); },
     set ink(hex) { compM.uniforms.uInk.value.set(hex).convertLinearToSRGB(); },
     set dark(on) { compM.uniforms.uDark.value = on ? 1 : 0; },
     set light(v) { compM.uniforms.uLight.value.copy(v); bake2M.uniforms.uLight.value.copy(v); if (paper) relight(); },

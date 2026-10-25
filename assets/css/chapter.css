@@ -477,3 +477,58 @@
 .loader__hint { flex-basis: 100%; text-align: center; color: rgb(255 255 255 / .62); }
 .sound-btn[aria-pressed="true"] { color: var(--acc); }
 @media (prefers-reduced-motion: reduce) { .loader__gate { animation: none; opacity: 1; } }
+
+/* ── overture (design plan §5, §9.4): paper at the threshold, the title's lock-up, the statement, the corners ── */
+@font-face { font-family: "Noto Serif Display"; src: url(../fonts/noto-serif-display-330.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Noto Serif Display"; src: url(../fonts/noto-serif-display-330-italic.woff2) format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+/* the display serif measured closest to Cartier's title face (plan §9.1): 62.5% width, weight 330 */
+.chapter { --serif: "Noto Serif Display", "Instrument Serif", Georgia, serif; }
+.has-ov { --paper: #ececea; --paper-ink: #212529; }
+.loader--paper { background: var(--paper); color: var(--paper-ink); cursor: default; }
+.loader--paper.is-gate { cursor: pointer; }
+.loader--paper:focus-visible { outline: none; }
+.loader--paper:focus-visible .ov-hint span { outline: 1px solid currentColor; outline-offset: 6px; border-radius: 2px; }
+.ov-load { display: grid; place-items: center; }
+.ov-mark { width: 56px; height: 56px; overflow: visible; }
+.ov-mark circle, .ov-mark ellipse { fill: none; stroke-width: 1.1; vector-effect: non-scaling-stroke; }
+.ov-mark__track { stroke: rgb(33 37 41 / .12); }
+.ov-mark__ring { stroke: var(--ov-ink, var(--paper-ink)); stroke-dasharray: 1 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .3s var(--ease-expo); }
+.ov-mark__mer { stroke: var(--paper-ink); transform-box: fill-box; transform-origin: 50% 50%; animation: ov-turn 3.2s var(--ease-sine) infinite; }
+@keyframes ov-turn { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.12); } }
+.ov-hint { position: absolute; left: 0; right: 0; bottom: calc(var(--frame) + 2px); text-align: center; overflow: hidden; font-size: 12px; letter-spacing: .06em; color: var(--paper-ink); }
+.ov-hint span { display: inline-flex; align-items: center; gap: 8px; }
+.ov-frame { position: fixed; inset: 0; z-index: 210; pointer-events: none; color: var(--paper-ink); }
+.ov-frame > * { pointer-events: auto; }
+.ov-mark-word { position: absolute; left: 0; right: 0; margin-inline: auto; width: max-content; top: calc(var(--frame) - 6px); text-align: center; color: inherit; text-decoration: none; transform-origin: 50% 0; }
+.ov-word { display: block; font: 400 24px/1 var(--serif); letter-spacing: .01em; }
+.ov-sub { display: block; margin-top: 8px; font-size: 12px; letter-spacing: .06em; }
+.ov-sound { position: absolute; right: var(--frame); bottom: var(--frame); display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; border: 0; background: none; color: inherit; font-size: 12px; letter-spacing: .06em; cursor: pointer; }
+.ov-scroll { position: absolute; left: var(--frame); bottom: var(--frame); display: inline-flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .06em; }
+.ov-scroll__o { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: .65px solid currentColor; }
+.ov-frame.is-gate .ov-scroll { visibility: hidden; }
+
+.ch-hero--ov { position: relative; display: block; min-height: 100svh; padding: 0; }
+.ov-lock { position: absolute; left: 0; right: 0; bottom: 40px; margin-inline: auto; width: max-content; text-align: center; color: var(--paper-ink); }
+.ov-lock__t { font-family: var(--serif); font-weight: 400; font-size: var(--t, min(11.15vw, 19.82svh)); line-height: 1; margin: 0; }
+/* Cartier's proportions (C = capital height): the italic 0.7em and centred on the capitals, 0.24C apart, line
+   pitch 1.28C, the second line flush right; the label 0.275C, 0.69C below, centred on the whole block */
+.ov-l { display: flex; align-items: center; gap: .17em; text-transform: uppercase; white-space: nowrap; }
+.ov-l + .ov-l { justify-content: flex-end; margin-top: .2em; }
+.ov-l i { font-size: .7em; text-transform: none; }
+.ov-lock__lab { margin: .5em 0 0; font: 400 max(12px, calc(var(--t, 160px) * .195)) / 1 var(--serif); letter-spacing: .02em; text-transform: uppercase; }
+.ch-q { min-height: 100svh; display: grid; place-items: center; padding: 18vh 0; text-align: center; }
+.ch-q .ch-wrap { display: grid; gap: 28px; justify-items: center; }
+.ch-q__t { max-width: 15em; margin: 0; font: 400 min(5.86vw, 9.4svh) / 1 var(--serif); color: #fff; text-wrap: balance; }
+.ch-q__eye, .ch-q__info { color: var(--text-3); max-width: 60ch; }
+/* while the page is paper, the stage's chrome waits */
+.has-ov .nav, .has-ov .tabbar, .has-ov .pillnav, .has-ov .world__vignette { transition: opacity .5s var(--ease-sine); }
+.has-ov .world__legend, .has-ov .world__labels { transition: opacity .5s var(--ease-sine); }
+.has-ov.is-paper .nav, .has-ov.is-paper .tabbar, .has-ov.is-paper .pillnav, .has-ov.is-paper .world__vignette,
+.has-ov.is-paper .world__legend, .has-ov.is-paper .world__labels { opacity: 0; pointer-events: none; }
+@media (max-width: 760px) {
+  .ov-hint { bottom: calc(var(--frame) + 44px); } /* above the sound corner */
+  .ov-lock { bottom: calc(env(safe-area-inset-bottom) + 64px); }
+  .ov-word { font-size: 22px; }
+}
+/* without WebGL there is no paper: the lock-up and corners sit on the dark stage */
+.no-webgl .ov-lock, .no-webgl .ov-frame { color: #ece9e1; }

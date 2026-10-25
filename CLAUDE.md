@@ -110,11 +110,28 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   shader discards it through `uCut`), `isolines: { id }` (ShakeMap intensity lines coloured IV to X). The legend
   switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
 
-## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phase 0 done 2026-10-25)
+## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phases 0 and 1 done 2026-10-25)
 - The plan measures Cartier's "Le Chœur des Pierres" (opening timeline, proportions, curves, its title face, paper and
   ink) and translates it: an overture where the chapter title is born mid-screen at 1.5× and glides home in 2 s, a
   frame UI instead of bars, three speeds, light and material on the globe, Noto Serif Display, paper at the thresholds
-  and the dark stage for scenes, joined by ink. Phases 1–5 are not built; nothing on the live chapters has changed.
+  and the dark stage for scenes, joined by ink. Phases 2–5 (frame UI, scene motion, hubs and home) are not built.
+- The overture (phase 1, `assets/js/overture.js`), for chapters that set `lockup` and `ink` (all three do): the loader
+  is a sheet of paper with the Meridian mark drawing its ring as the map loads; the whole screen is the gate ("Tap
+  anywhere to enter", Enter or Space; the Sound corner switches the remembered choice and stays as the paper's sound
+  switch). Then the title lock-up (Noto Serif Display 330, Cartier's proportions: italic 0.7em centred on the capitals,
+  second line flush right, the label below) is born mid-screen at 1.5×, its words sharpen in a random order, and at
+  1.75 s it glides home over 2 s while the globe fades in, arrives from 2.4× further away and the sun comes round
+  (`world.setIntro`), and ink blooms round it (`world.setPaper({ bloom })`), all on `m.smooth`. Scrolling floods the
+  paper (`flood`, from 8% to 85% of the first screen): the ink spreads from the globe and deepens into the stage, the
+  stars come in, and only then the nav bar, pill, legend and labels (`.is-paper` hides them). The hero's question
+  becomes a statement screen (`.ch-q`, 84 px serif, words sharpen when its top passes 60% of the screen). Returning
+  within 12 hours (`store` 'overture'): a 1.2 s version in place; reduced motion: no blur or glide; a link to a scene
+  skips it. Chapters without `lockup` (the engine tests) keep the old loader.
+- On the paper the globe is an object of a set size (`paperAlt`: radius 19% of the shorter side, 34% of a phone's
+  width), centred and a little high (`heroView`), with the scenes' panel offset blended in as the camera leaves the
+  hero. The sheet is drawn at CSS size only when it changes and laid under the globe in the post target; bloom, grade
+  and shoulder are off on paper so it keeps its measured values. Chapters now draw with `look` on (`?look=0` off).
+- `chapter.css` sets `--serif` to Noto Serif Display 330 inside chapters (the hubs and home still use Instrument Serif).
 - `assets/js/motion.js`: tokens (`EASE` smooth/expo/quint/io/sine/in registered as `m.*`, `DUR` ui .3, text 1, stage 2),
   `words`, `blurIn` (5 px, 1 s linear, 0.1 s apart, random order), `blurOut`, `lineOut`, `glide`/`hold` (FLIP from
   the centre, CLS 0), `director`, `returning`. The same tokens are CSS variables in site.css (`--ease-smooth`, `--dur-*`,
@@ -140,10 +157,17 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   task; the very first run has one 233 ms frame (first blur and filter set-up), later runs none. Ink against Cartier's
   emerald (radial profile): extent 2.05 vs 2.0 radii, lopsided 1.39 vs 1.55, edge saturation 88 vs 84. Paper:
   mean 236–244 (Cartier 238–244), mid grain σ 1.2–1.5 (0.93), fibres' direction 0.69–0.73 (0.45–0.68).
+- Measured, phase 1 (2026-10-25, M5, headless): tap → title fully sharp 1.79 s, title home 3.74 s (short version
+  1.18 s), 60 fps (median and p95 16.7 ms, worst 16.8), CLS 0, no long task, 0.49 ms CPU per frame. GPU per drawn
+  frame at DPR 2: paper hero 14.1 ms, Berlin 10.3 ms with `look` (6.9 without); 4× MSAA had made the hero 21.4 ms,
+  so the post target takes 2 samples from DPR 1.5. The ink's arrival field: 15 ms once (16-neighbour relaxation;
+  8 neighbours drew octagons).
 - Traps: three encodes its own materials (LineMaterial, MeshBasicMaterial) to sRGB only on the screen, never into a
   render target, while the engine's raw shaders write display values either way; post.js patches those materials to
   encode in the target too (without it the plate lines came out ΔE 13 darker). `Color.set('#hex')` stores linear
-  values: in raw shaders call `.convertLinearToSRGB()` (the paper's ink went grey without it).
+  values: in raw shaders call `.convertLinearToSRGB()` (the paper's ink went grey without it). A GLSL ternary that mixes
+  int and float fails to compile silently in the relaxation pass and the ink then covers the page: use a `const vec2[]`.
+  An "off" ink front must be far below zero (−1e4), not −10: the soft edge reaches tens of cells.
 
 ## Sound
 - `assets/js/sound.js`, synthesised with Web Audio (no audio files), modelled on measurements of Cartier's "Le Chœur

@@ -12,6 +12,8 @@ const WORLD = { lat: 8, lon: 160, alt: 17500 };
 export default {
   id: 'tectonics', subject: 'geography', status: 'draft', borders: 'none', light: 'camera', accent: '#5fb0ff',
   sound: true, // assets/js/sound.js: the loader asks once, then the ambient soundscape follows the scroll
+  // the overture's title (assets/js/overture.js) and the ink that blooms round the globe and floods the paper
+  lockup: { lines: [{ it: 'A', caps: 'Restless' }, { caps: 'Planet' }], label: 'Topic 4', sub: 'Geography · 0460' }, ink: '#1f5fae',
   title: 'Tectonic hazards', question: 'Why does the ground shake and burn?',
   hero: { camera: { lat: 10, lon: 150, alt: 18000 } },
   ribbon: ['1940-01-01', '2026-01-01'], heroDate: '2000-01-01',

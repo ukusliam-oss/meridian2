@@ -9,6 +9,8 @@ const WORLD = { lat: 18, lon: 12, alt: 17000 };
 
 export default {
   id: 'macro-policy', subject: 'economics', status: 'reviewed', sound: true, borders: 'modern', accent: '#46d6a0',
+  // the overture's title (assets/js/overture.js) and the ink that blooms round the globe and floods the paper
+  lockup: { lines: [{ it: 'Steering the' }, { caps: 'Economy' }], label: 'Topic 4.1–4.4', sub: 'Economics · 0455' }, ink: '#0f7a58',
   title: 'Government and the macroeconomy', question: 'How do governments manage the whole economy?',
   hero: { camera: { lat: 22, lon: 20, alt: 17500 } },
   ribbon: ['1980-01-01', '2027-01-01'], heroDate: '2019-01-01',

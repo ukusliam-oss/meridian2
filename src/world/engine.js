@@ -13,7 +13,7 @@ import {
   WebGLRenderer, Scene, PerspectiveCamera, Group, Mesh, SphereGeometry, ShaderMaterial, CanvasTexture, DataTexture, Texture,
   TextureLoader, Vector2, Vector3, Vector4, Color, BufferGeometry, Float32BufferAttribute, LineSegments, LineBasicMaterial,
   TubeGeometry, CatmullRomCurve3, ConeGeometry, MeshBasicMaterial, BackSide, DoubleSide, AdditiveBlending, SRGBColorSpace,
-  LinearFilter, LinearMipmapLinearFilter, NearestFilter, RGFormat, FloatType, Quaternion, Points, InstancedMesh, CylinderGeometry, Matrix4, DynamicDrawUsage,
+  LinearFilter, LinearMipmapLinearFilter, NearestFilter, RGFormat, WebGLRenderTarget, FloatType, Quaternion, Points, InstancedMesh, CylinderGeometry, Matrix4, DynamicDrawUsage,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -24,9 +24,11 @@ import { geoInterpolate, geoDistance } from 'd3-geo';
 import { mesh } from 'topojson-client';
 import { DEG, dayNum, PALETTE, WALL_DOWN, featuresOf, countriesAt, runJob } from './paint.js';
 import { createPost } from './post.js';
+import { createSheet } from './material.js';
 import { pointsLayer, plateLines, loadDem, terrainPatch, sectionOf, cutaway, PLATE_COLOR, DEPTH_STOPS, VOLCANO_COLOR, MMI_COLOR, MMI_ROMAN } from './layers.js';
 
 export { PALETTE, ll };
+const DEG_R = Math.PI / 180;
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const ARROW = { military: '#ff5a4f', people: '#ffd59a', pressure: '#c9b3ff', capital: '#7ef0c2', trade: '#9db7ff' };
 const LINE = { 'iron-curtain': '#dfe6f2', wall: '#ffffff' };
@@ -93,7 +95,7 @@ const earthFrag = /* glsl */`
 #endif
   uniform vec4 uSlotA, uSlotB;      // x: value row (< 0: no data layer), y: d0, z: d1, w: ramp row
   uniform float uWA, uWB;           // inside each state, how far its values have moved towards the other state's row
-  uniform float uMix, uHatch, uLook; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
+  uniform float uMix, uHatch, uLook, uFade; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv;
   vec2 lonlat() { return vec2(vUv.x * 360.0 - 180.0, vUv.y * 180.0 - 90.0); }
   vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
@@ -214,10 +216,10 @@ const earthFrag = /* glsl */`
       col += vec3(1.0, 0.95, 0.86) * D * F * max(dot(n, L), 0.0) * 0.22 * wm;
       col += uRim * rim * 0.55 * (0.3 + 0.7 * smoothstep(-0.3, 0.5, dot(n, L)));
     } else col += uRim * rim * 0.55;
-    gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(col, uFade);
   }`;
 const airFrag = /* glsl */`
-  uniform vec3 uRim, uLight; uniform float uLook; varying vec3 vN; varying vec3 vW;
+  uniform vec3 uRim, uLight; uniform float uLook, uFade; varying vec3 vN; varying vec3 vW;
   void main() {
     vec3 n = normalize(vN), v = normalize(cameraPosition - vW);
     float f = pow(clamp(1.0 - abs(dot(n, v)), 0.0, 1.0), 2.4);
@@ -226,8 +228,8 @@ const airFrag = /* glsl */`
       float sun = dot(n, normalize(uLight));
       float day = smoothstep(-0.35, 0.3, sun), edge = exp(-pow((sun + 0.05) / 0.18, 2.0));
       vec3 c = mix(uRim, vec3(1.0, 0.62, 0.4), edge * 0.55);
-      gl_FragColor = vec4(c * (1.0 + 0.6 * pow(f, 6.0)), f * 0.9 * mix(0.22, 1.1, day));
-    } else gl_FragColor = vec4(uRim, f * 0.9);
+      gl_FragColor = vec4(c * (1.0 + 0.6 * pow(f, 6.0)), f * 0.9 * mix(0.22, 1.1, day) * uFade);
+    } else gl_FragColor = vec4(uRim, f * 0.9 * uFade);
   }`;
 const tubeVert = /* glsl */`
   varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
@@ -400,7 +402,7 @@ function painter(feats, dataUrl, onDone) {
 
 // ── engine ──────────────────────────────────────────────────────────────────
 // scenes: engine scenes; a chapter panel that steps through several years has one per year, all with the same `panel`.
-export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', values = null, accent = null, reduced = false, look = 0, onFrame } = {}) {
+export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', values = null, accent = null, reduced = false, look = 0, paper = null, onFrame } = {}) {
   if (accent) PALETTE.focus = accent;
   const canvas = document.createElement('canvas');
   canvas.className = 'world__canvas';
@@ -613,7 +615,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     uRelW: { value: flat }, uRelE: { value: flat }, uTA: { value: blank }, uTB: { value: blank },
     uQA: { value: blank }, uQB: { value: blank }, uQBoxA: { value: new Vector4() }, uQBoxB: { value: new Vector4() },
     uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
-    uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
+    uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uFade: { value: 1 }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
     uOcean: { value: new Color('#06080d') }, uOceanLift: { value: new Color('#0c1220') }, uRim: { value: rim }, uFocus: { value: new Color(PALETTE.focus) },
   };
   if (relief) {
@@ -628,19 +630,27 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   }));
   earth.rotation.y = -Math.PI / 2; // equirectangular u=0 at lon -180
   const air = new Mesh(new SphereGeometry(1.06, 96, 64), new ShaderMaterial({
-    uniforms: { uRim: { value: rim }, uLight: { value: light }, uLook: { value: look ? 1 : 0 } }, vertexShader: shellVert, fragmentShader: airFrag,
+    uniforms: { uRim: { value: rim }, uLight: { value: light }, uLook: { value: look ? 1 : 0 }, uFade: earthU.uFade }, vertexShader: shellVert, fragmentShader: airFrag,
     side: BackSide, transparent: true, blending: AdditiveBlending, depthWrite: false,
   }));
   globe.add(earth, air);
 
-  // star dust far away, for depth when the camera moves
+  // star dust far away, for depth when the camera moves. With `look`, three depths (near ones larger and brighter,
+  // each a little warmer or cooler) so the parallax reads; they wait for the stage while the page is paper.
+  const starsU = { uA: { value: 1 } };
   {
-    const n = 1800, pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { const v = new Vector3().randomDirection().multiplyScalar(30 + Math.random() * 30); pos.set([v.x, v.y, v.z], i * 3); }
+    const n = 1800, pos = new Float32Array(n * 3), sz = new Float32Array(n), tone = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const tier = look ? i % 3 : 1, r = look ? [24, 36, 56][tier] + Math.random() * 6 : 30 + Math.random() * 30;
+      const v = new Vector3().randomDirection().multiplyScalar(r); pos.set([v.x, v.y, v.z], i * 3);
+      sz[i] = look ? [2.4, 1.6, 1.0][tier] : 1.6; tone[i] = look ? [0.6, 0.38, 0.18][tier] * (0.6 + Math.random() * 0.4) : 0.35;
+    }
     const g = new BufferGeometry(); g.setAttribute('position', new Float32BufferAttribute(pos, 3));
+    g.setAttribute('size', new Float32BufferAttribute(sz, 1)); g.setAttribute('tone', new Float32BufferAttribute(tone, 1));
     scene.add(new Points(g, new ShaderMaterial({
-      vertexShader: 'void main(){ gl_PointSize = 1.6; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: 'void main(){ gl_FragColor = vec4(0.75,0.72,1.0,0.35); }', transparent: true, depthWrite: false,
+      uniforms: starsU,
+      vertexShader: 'attribute float size, tone; varying float vT; void main(){ vT = tone; gl_PointSize = size; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: 'uniform float uA; varying float vT; void main(){ gl_FragColor = vec4(mix(vec3(0.75,0.72,1.0), vec3(1.0,0.9,0.82), step(0.5, vT)), vT * uA); }', transparent: true, depthWrite: false,
     })));
   }
 
@@ -797,7 +807,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
         const span = y1 - y0 + 4, run = (time - playT0) * PLAY_RATE;
         now = y0 + run % span; live = true; playing = true; clockYear = Math.min(y1, Math.floor(now));
       }
-      l.set(spec, op, now, px, scale);
+      l.set(spec, op * intro.fade, now, px, scale); // the overture brings points in with the globe
     }
     if (!playing) playT0 = null;
     return live;
@@ -970,7 +980,50 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
 
   // ── light: with `look` the frame goes through the post pipeline (bloom, shoulder, grade, vignette, grain) ──────
   const post = look ? createPost(renderer, { phone }) : null;
-  const draw = () => (post ? post.render(scene, camera) : renderer.render(scene, camera));
+  const draw = () => (post ? post.render(scene, camera, sheetTex()) : renderer.render(scene, camera));
+
+  // ── paper (design plan §9): the chapter's threshold is a sheet of paper with the globe lying on it; ink blooms
+  // around the globe and, as the reader scrolls in, floods the page and deepens into the night of the stage.
+  // The sheet is drawn at CSS size only when it changes, and laid under the globe as one texture.
+  const sheet = paper && post ? createSheet(renderer, { cell: 3 }) : null;
+  if (sheet) sheet.ink = paper.ink;
+  let sheetRT = null, sheetDirty = true, flood = sheet ? 0 : 1, bloomK = 0, inkReady = false;
+  const intro = { fade: 1, arrive: 1 };
+  const baseLight = light.clone(), backLight = new Vector3(0.9, 0.15, -0.7);
+  const circle = [0, 0, 1], scratchCam = camera.clone();
+  function sheetTex() {
+    if (!sheet || flood >= 1) return null;
+    if (sheetDirty) { sheet.draw(sheetRT); sheetDirty = false; }
+    return sheetRT.texture;
+  }
+  // where the globe's disc is on the screen for a camera (CSS px): its centre and radius
+  function discOf(cam) {
+    cam.updateMatrixWorld();
+    const o = new Vector3(0, 0, 0).project(cam), d = cam.position.length();
+    const r = (H / 2) * Math.tan(Math.asin(Math.min(1, 1 / d))) / Math.tan(cam.fov / 2 * DEG_R) * cam.zoom;
+    return [(o.x * 0.5 + 0.5) * W, (-o.y * 0.5 + 0.5) * H, r];
+  }
+  // the hero altitude that gives the globe its size on the paper (placeCamera lifts tall phones by 1.7)
+  function paperAlt() {
+    const r = W > 900 ? Math.min(W, H) * 0.19 : W * 0.34;
+    const q = r / (H / 2) * Math.tan(camera.fov / 2 * DEG_R);
+    return (1 / Math.sin(Math.atan(q)) - 1) * R_KM / (W / H < 0.8 ? 1.7 : 1);
+  }
+  // the ink's field is worked out once for the settled hero view (the globe arrives into it)
+  function inkSource() {
+    scratchCam.copy(camera); heroView(scratchCam, 1);
+    placeCamera(scratchCam, { ...hero.camera, alt: paperAlt() }, { ...hero.camera, alt: paperAlt() }, 0, W, H);
+    const [x, y, r] = discOf(scratchCam);
+    sheet.source(x, y, r); inkReady = true; sheetDirty = true;
+  }
+  // first-screen composition: the globe centred and a little high, the title in the lower third (Cartier's stones
+  // sit at 33–50% of the height, the title at 73–91%); scenes keep the panel's offset. k: 1 hero … 0 scene
+  function heroView(cam, k) {
+    const wide = W > 900;
+    const x = wide ? -W * 0.2 * (1 - k) : 0;
+    const y = wide ? H * 0.16 * k : H * (0.18 * (1 - k) + 0.2 * k);
+    cam.aspect = W / H; cam.setViewOffset(W, H, x, y, W, H); cam.updateProjectionMatrix();
+  }
 
   // ── camera ────────────────────────────────────────────────────────────────
   let W = 1, H = 1;
@@ -983,6 +1036,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     renderer.setSize(W, H, false);
     setViewport(camera, W, H);
     if (post) post.setSize(W, H, renderer.getPixelRatio());
+    if (sheet) { sheetRT?.dispose(); sheetRT = new WebGLRenderTarget(W, H, { depthBuffer: false }); sheet.resize(W, H); inkReady = false; sheetDirty = true; }
     lineRes.set(W, H);
     if (refKey(W, H) !== refKey(...REF)) { REF = [W, H]; stateCache.clear(); } // the next frames ask for textures that fit
     for (const list of markerEls.values()) list.forEach(m => { m.w = 0; });
@@ -1029,14 +1083,29 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     const tt = reduced ? (f < 0.5 ? 0 : 1) : ease(smooth(0.08, 0.92, f));
     // the hero drifts slowly until the reader starts scrolling
     const heroCam = { ...hero.camera, lon: hero.camera.lon + (reduced ? 0 : Math.sin(time * 0.06) * 12) };
+    if (sheet) {
+      // on the paper the globe is an object of a set size (radius ≈ 19% of the shorter side, 34% of a phone's width),
+      // and in the overture it arrives from 2.4 times further away as the title glides home
+      heroCam.alt = paperAlt() * (1 + 1.4 * (1 - intro.arrive));
+      heroView(camera, clamp(-p));
+      if (!inkReady) inkSource();
+    }
     const alt = placeCamera(camera, i < 0 ? heroCam : sA.camera, j < 0 ? heroCam : sB.camera, tt, W, H);
+    if (sheet && flood < 1) { const c = discOf(camera); if (Math.abs(c[0] - circle[0]) + Math.abs(c[1] - circle[1]) + Math.abs(c[2] - circle[2]) > 0.25) { circle.splice(0, 3, ...c); sheet.object = c; sheetDirty = true; } }
     lineLift = 1 + clamp(alt / R_KM * 0.002, 1e-6, 0.0015);
     // a chapter that goes all round the world (Geography) carries its light with the camera, from the upper left as
     // the fixed light falls on Europe, so no scene lands on the night side
     if (lightMode === 'camera') {
       const d = camera.position.clone().normalize(), east = new Vector3(0, 1, 0).cross(d).normalize(), north = d.clone().cross(east);
       light.copy(d).addScaledVector(east, -0.75).addScaledVector(north, 0.6);
-    }
+    } else if (sheet) light.copy(baseLight);
+    // sunrise: during the overture the sun comes round from behind the globe
+    if (sheet && intro.arrive < 1) light.lerp(backLight, 1 - intro.arrive).normalize();
+    earthU.uFade.value = intro.fade; earth.material.transparent = intro.fade < 1;
+    starsU.uA.value = sheet ? smooth(0.75, 1, flood) : 1;
+    // the paper keeps its own measured values: no shoulder, no grade, its own grain, until the stage takes over
+    if (sheet) { const onPaper = flood < 1; post.grade = onPaper ? 0 : 0.5; post.shoulder = onPaper ? 1 : 0.8; post.grain = onPaper ? 0.004 : 0.012; post.bloom = onPaper ? 0 : 0.5; }
+    if (sheet && sheet.shade !== intro.fade) { sheet.shade = intro.fade; sheetDirty = true; }
 
     // textures: keep the last complete state while a new one is painting, so nothing ever flashes blank
     const A = texturesOf(i, true) || lastA || lastB, B = texturesOf(j, true) || A;
@@ -1058,6 +1127,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     for (const m of borderSets.values()) { m.material.opacity = 0; m.material.resolution = lineRes; m.scale.setScalar(lineLift); }
     const cityA = sA.map.city ? 0.4 : 1, cityB = sB.map.city ? 0.4 : 1;
     if (ba) ba.material.opacity += 0.28 * (1 - mix) * cityA; if (bb) bb.material.opacity += 0.28 * mix * cityB;
+    if (intro.fade < 1) for (const m of borderSets.values()) m.material.opacity *= intro.fade;
 
     setSpikes(i, j, mix, alt);
     live = setPoints(sA, sB, mix, time, alt);
@@ -1099,6 +1169,15 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
 
   return {
     setProgress(p) { progress = p; },
+    // the threshold's paper (chapters with `paper`): bloom = the ink's reach in globe radii, flood = 0 paper … 1 stage
+    setPaper({ bloom, flood: f } = {}) {
+      if (!sheet) return;
+      if (bloom != null && bloom !== bloomK) { bloomK = bloom; sheet.bloom = bloom; sheetDirty = true; dirty = true; }
+      if (f != null && f !== flood) { flood = f; sheet.flood = f; sheetDirty = true; dirty = true; }
+    },
+    // the overture: fade 0 … 1 (the globe appears), arrive 0 … 1 (it comes in from far away and the sun comes round)
+    setIntro({ fade, arrive } = {}) { if (fade != null) intro.fade = fade; if (arrive != null) intro.arrive = arrive; dirty = true; },
+    paper: !!sheet,
     // flows of a panel wait for the step of its chain that sends them (0 hidden, 1 drawn)
     setGate(panel, g) { if (gates.get(panel) !== g) { gates.set(panel, g); dirty = true; } },
     pointOf: key => point.get(key),

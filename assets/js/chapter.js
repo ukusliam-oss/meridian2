@@ -181,8 +181,11 @@ function sceneHTML(s, i) {
 }
 
 $('[data-scenes]').innerHTML = scenes.map(sceneHTML).join('');
-// a draft says so under the chapter title; a reviewed chapter shows nothing
-if (data.subject && data.status === 'draft' && $('.ch-hero .ch-wrap')) $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
+// a chapter with a title lock-up opens with the overture (overture.js): paper, the title's glide, ink, then the stage
+const ov = data.lockup ? (await import('./overture.js')).prepareOverture(data) : null;
+// a draft says so under the chapter title (or its question); a reviewed chapter shows nothing
+const draftAt = $('.ch-q .ch-wrap') || $('.ch-hero .ch-wrap');
+if (data.subject && data.status === 'draft' && draftAt) draftAt.insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
 
 // end of chapter: one-page summary, quick checks, every source
 $('[data-sum]').innerHTML = data.toolkit.summary.map(x => `<p>${x}</p>`).join('');
@@ -417,7 +420,7 @@ const idle = (f, delay = 0) => setTimeout(() => (window.requestIdleCallback ? re
 let world = null;
 let hero = null;
 const loader = $('[data-loader]'), pct = $('[data-pct]'), bar = $('[data-bar]');
-const setPct = v => { const n = Math.round(v * 100); pct.textContent = String(n).padStart(3, '0') + '%'; bar.style.width = n + '%'; };
+const setPct = v => { const n = Math.round(v * 100); if (pct) pct.textContent = String(n).padStart(3, '0') + '%'; if (bar) bar.style.width = n + '%'; if (ov) ov.progress(v); };
 
 async function loadBorders() {
   const res = await fetch(CFG.borders);
@@ -531,7 +534,9 @@ async function start() {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
     buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light, look: +(new URLSearchParams(location.search).get('look') || 0) }); // ?look=2: the design plan's light (phase 0 trial)
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light,
+      // the design plan's light: on for chapters with the overture (?look=0 turns it off), a trial elsewhere (?look=2)
+      look: +(new URLSearchParams(location.search).get('look') ?? (ov ? 2 : 0)), paper: ov ? { ink: data.ink || CFG.accent || '#6d3fd0' } : null });
     window.__meridianWorld = world; // stats for checks in the preview
     if (world) for (const s of scenes) if (s.map && s.map.section && s.map.relief3d) {
       const fig = $(`[data-xs="${s.id}"]`), x = s.map.section;
@@ -554,6 +559,7 @@ async function start() {
     // past the last scene (lab, toolkit): the map's ribbon, legend and labels step aside
     root.classList.toggle('is-past', y + innerHeight * 0.5 > holds[N - 1][1] + innerHeight * 0.35);
     if (world) world.setProgress(ep);
+    if (ov) ov.scroll(y, world);
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
   });
@@ -561,7 +567,8 @@ async function start() {
   document.fonts?.ready.then(() => { measure(); lastY = NaN; });
   new ResizeObserver(() => { measure(); lastY = NaN; }).observe($('[data-scenes]'));
   const enter = () => requestAnimationFrame(() => { loader.classList.add('is-done'); root.classList.add('is-ready'); });
-  if (snd) gate(enter); else enter();
+  if (ov) { root.classList.add('is-ready'); ov.enter({ world, sound: snd, skip: !!location.hash }); }
+  else if (snd) gate(enter); else enter();
   boot();
   if (location.hash) { const k = scenes.findIndex(s => '#' + s.id === location.hash); if (k >= 0) setTimeout(() => goTo(k), 400); }
 }

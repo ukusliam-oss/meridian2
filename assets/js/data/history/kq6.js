@@ -48,6 +48,9 @@ export default {
   question: 'How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?',
   status: 'reviewed',
   sound: true, // assets/js/sound.js
+  // the overture's title (assets/js/overture.js): two lines, an italic lead and capitals, the second line flush right
+  lockup: { lines: [{ it: 'Behind the', caps: 'Iron' }, { caps: 'Curtain' }], label: 'Key question VI', sub: 'History · 0470' },
+  ink: '#6d3fd0', // the ink that blooms round the globe on the paper and floods it (the chapter's violet)
 
   focusPoints: [
     { id: 'FP1', text: 'Why was there opposition to Soviet control in Hungary in 1956 and Czechoslovakia in 1968, and how did the USSR react to this opposition?' },

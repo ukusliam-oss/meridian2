@@ -58,7 +58,7 @@ const quad = mat => { const m = new Mesh(new PlaneGeometry(2, 2), mat); m.frustu
 const cam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const target = (w, h, samples = 0) => new WebGLRenderTarget(Math.max(1, w), Math.max(1, h), { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, depthBuffer: samples > 0, samples });
 
-export function createPost(renderer, { levels = 5, phone = false } = {}) {
+export function createPost(renderer, { levels = 5, phone = false, samples = null } = {}) {
   const LV = phone ? 3 : levels;
   const bright = new ShaderMaterial({ vertexShader: VERT, fragmentShader: BRIGHT, uniforms: { uSrc: { value: null }, uThr: { value: .84 } }, blending: NoBlending, depthTest: false });
   const down = new ShaderMaterial({ vertexShader: VERT, fragmentShader: DOWN, uniforms: { uSrc: { value: null }, uPx: { value: new Vector2() } }, blending: NoBlending, depthTest: false });
@@ -67,7 +67,8 @@ export function createPost(renderer, { levels = 5, phone = false } = {}) {
     vertexShader: VERT, fragmentShader: COMP, blending: NoBlending, depthTest: false,
     uniforms: { uSrc: { value: null }, uBloom: { value: null }, uBloomK: { value: .5 }, uExposure: { value: 1 }, uShoulder: { value: .8 }, uGrade: { value: .5 }, uVignette: { value: 0 }, uGrain: { value: .012 }, uRes: { value: new Vector2(1, 1) } },
   });
-  const qB = quad(bright), qD = quad(down), qU = quad(up), qC = quad(comp);
+  const copy = new ShaderMaterial({ vertexShader: VERT, fragmentShader: 'uniform sampler2D uSrc; varying vec2 vUv; void main(){ gl_FragColor = texture2D(uSrc, vUv); }', uniforms: { uSrc: { value: null } }, blending: NoBlending, depthTest: false, depthWrite: false });
+  const qX = quad(copy), qB = quad(bright), qD = quad(down), qU = quad(up), qC = quad(comp);
   let main = null, mips = [];
   const params = comp.uniforms;
   const api = {
@@ -75,23 +76,27 @@ export function createPost(renderer, { levels = 5, phone = false } = {}) {
     set bloom(k) { params.uBloomK.value = k; }, get bloom() { return params.uBloomK.value; },
     set exposure(e) { params.uExposure.value = e; }, get exposure() { return params.uExposure.value; },
     set grade(g) { params.uGrade.value = g; },
+    set shoulder(v) { params.uShoulder.value = v; },
     set vignette(v) { params.uVignette.value = v; },
     set grain(g) { params.uGrain.value = g; },
     setSize(w, h, dpr) {
       const W = Math.round(w * dpr), H = Math.round(h * dpr);
       main?.dispose(); mips.forEach(m => m.dispose());
-      main = target(W, H, 4);
+      main = target(W, H, samples ?? (dpr >= 1.5 ? 2 : 4)); // dense screens need fewer samples (and pay four times the pixels)
       mips = []; let mw = W >> 1, mh = H >> 1;
       for (let k = 0; k < LV; k++) { mips.push(target(mw, mh)); mw = Math.max(1, mw >> 1); mh = Math.max(1, mh >> 1); }
       params.uRes.value.set(W, H);
     },
     // draw the scene through the light: the target, the bloom chain, the composite onto the screen
-    render(scene, camera) {
+    // `under`: a texture laid under the scene (the threshold's paper), drawn first into the same target
+    render(scene, camera, under = null) {
       // three encodes its own materials (lines, arrows, spikes) to sRGB only on the screen, never into a target; the
       // engine's shaders write display values either way. So those materials are made to encode here too, and the
       // frame in the target matches the canvas exactly (checked: map colours ΔE2000 < 1 against the plain frame).
       scene.traverse(o => { const m = o.material; if (m && !m.userData.srgbOut) encodeOut(m); });
-      renderer.setRenderTarget(main); renderer.clear(); renderer.render(scene, camera);
+      renderer.setRenderTarget(main); renderer.clear();
+      if (under) { copy.uniforms.uSrc.value = under; renderer.autoClear = false; renderer.render(qX.s, cam); renderer.render(scene, camera); renderer.autoClear = true; }
+      else renderer.render(scene, camera);
       if (params.uBloomK.value > 0) {
         bright.uniforms.uSrc.value = main.texture; renderer.setRenderTarget(mips[0]); renderer.render(qB.s, cam);
         for (let k = 1; k < LV; k++) {
@@ -108,7 +113,7 @@ export function createPost(renderer, { levels = 5, phone = false } = {}) {
       comp.uniforms.uSrc.value = main.texture; comp.uniforms.uBloom.value = mips[0].texture;
       renderer.setRenderTarget(null); renderer.render(qC.s, cam);
     },
-    dispose() { main?.dispose(); mips.forEach(m => m.dispose()); [bright, down, up, comp].forEach(m => m.dispose()); },
+    dispose() { main?.dispose(); mips.forEach(m => m.dispose()); [copy, bright, down, up, comp].forEach(m => m.dispose()); },
   };
   return api;
 }
