@@ -96,8 +96,12 @@ const earthFrag = /* glsl */`
   uniform vec4 uSlotA, uSlotB;      // x: value row (< 0: no data layer), y: d0, z: d1, w: ramp row
   uniform float uWA, uWB;           // inside each state, how far its values have moved towards the other state's row
   uniform float uMix, uHatch, uLook, uFade, uGlint; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
+  uniform float uInkMap, uFloodP, uFR; uniform vec3 uInkCol, uDisc; uniform vec2 uRes; uniform sampler2D uFT;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv;
   vec2 lonlat() { return vec2(vUv.x * 360.0 - 180.0, vUv.y * 180.0 - 90.0); }
+  float vhash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(vhash(i), vhash(i + vec2(1, 0)), f.x), mix(vhash(i + vec2(0, 1)), vhash(i + vec2(1, 1)), f.x), f.y); }
   vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
 #ifdef HAS_DATA
   float idAt(sampler2D t, ivec2 p) { vec4 c = texelFetch(t, p, 0); return floor(c.r * 255.0 + 0.5) + 256.0 * floor(c.g * 255.0 + 0.5); }
@@ -216,10 +220,46 @@ const earthFrag = /* glsl */`
       col += vec3(1.0, 0.95, 0.86) * D * F * max(dot(n, L), 0.0) * 0.22 * wm * uGlint;
       col += uRim * rim * 0.55 * (0.3 + 0.7 * smoothstep(-0.3, 0.5, dot(n, L)));
     } else col += uRim * rim * 0.55;
+    if (uInkMap > 0.5) {
+      // the paper's globe (design plan §9.4, revised): an ink map. The sea is the paper, the land a watercolour wash of
+      // the chapter's ink (thicker in the valleys, granulated), a 15° graticule, the coasts and the limb drawn as fine
+      // ink lines. It becomes the real globe pixel by pixel where the scroll's flood has turned the page to night,
+      // read from the same arrival field the paper uses.
+      // inside the globe's disc the field is zero (the flood starts there), so the ink soaks in from the limb towards the
+      // middle instead, frayed by the land and a little noise, and the drawing turns into the globe as a front
+      float T = texture2D(uFT, gl_FragCoord.xy / uRes).r;
+      float rd = length(gl_FragCoord.xy - uDisc.xy) / max(uDisc.z, 1.0);
+      // frayed in screen space (a soft value noise, two octaves), so nothing gathers at the poles
+      vec2 sp = gl_FragCoord.xy / max(uDisc.z, 1.0) * 3.0;
+      float fray = (vnoise(sp) * 0.65 + vnoise(sp * 2.3 + 7.1) * 0.35) * 2.0 - 1.0;
+      T += clamp(1.0 - rd, 0.0, 1.0) * uFR * 2.6 + fray * uFR * 0.45 * step(rd, 1.0);
+      float real = smoothstep(0.05, 0.5, smoothstep(uFR * 0.3, uFR * 2.2, uFloodP - T));
+      if (real < 1.0) {
+        float sun = smoothstep(-0.45, 0.65, dot(n, normalize(uLight)));
+        // land is anything painted above a quarter: KQ6's state glazes run 0.62–0.85 with lighter bands at their edges,
+        // which a contour at 0.5 drew as dotted coasts through Europe
+        float landRaw = clamp(land.a / 0.996, 0.0, 1.0) * (1.0 - water);
+        // granulation follows the ground, not the screen: a soft noise in longitude and latitude
+        float g2 = 0.5 + 0.25 * sin(vUv.x * 900.0 + sin(vUv.y * 700.0) * 3.0) * sin(vUv.y * 820.0 + vUv.x * 160.0);
+        vec3 paperC = vec3(0.94) * (0.9 + 0.1 * sun);
+        float dens = (0.48 + 0.3 * clamp(1.0 - rel, 0.0, 1.0)) * (0.86 + 0.28 * g2);
+        float aw = max(fwidth(landRaw), 1e-3), landM = smoothstep(0.25 - aw, 0.25 + aw, landRaw);
+        vec3 ink = paperC * pow(clamp(uInkCol + 0.04, 0.02, 1.0), vec3(dens * landM));
+        float coast = 1.0 - smoothstep(0.0, aw * 1.2, abs(landRaw - 0.25)); // the coast as a contour, antialiased
+        vec2 ll = lonlat(), gd = abs(fract(ll / 15.0 + 0.5) - 0.5) * 15.0, fw = max(fwidth(ll), vec2(1e-4));
+        float grat = max(1.0 - smoothstep(0.0, fw.x * 1.1, gd.x), 1.0 - smoothstep(0.0, fw.y * 1.1, gd.y));
+        float eq = 1.0 - smoothstep(0.0, fw.y * 1.5, abs(ll.y));
+        float ndv = max(dot(n, v), 0.0), limb = 1.0 - smoothstep(0.0, fwidth(ndv) * 2.2, ndv - 0.002);
+        ink = mix(ink, uInkCol * 0.72, clamp(coast * 0.8 + grat * 0.16 + eq * 0.28 + limb * 0.85, 0.0, 1.0));
+        // the soaking front is wet: a band of the ink's colour between the drawing and the globe
+        float wetBand = real * (1.0 - real) * 4.0;
+        col = mix(mix(ink, col, real), uInkCol * 0.55, wetBand * 0.55);
+      }
+    }
     gl_FragColor = vec4(col, uFade);
   }`;
 const airFrag = /* glsl */`
-  uniform vec3 uRim, uLight; uniform float uLook, uFade; varying vec3 vN; varying vec3 vW;
+  uniform vec3 uRim, uLight; uniform float uLook, uFade, uAir; varying vec3 vN; varying vec3 vW;
   void main() {
     vec3 n = normalize(vN), v = normalize(cameraPosition - vW);
     float f = pow(clamp(1.0 - abs(dot(n, v)), 0.0, 1.0), 2.4);
@@ -228,7 +268,7 @@ const airFrag = /* glsl */`
       float sun = dot(n, normalize(uLight));
       float day = smoothstep(-0.35, 0.3, sun), edge = exp(-pow((sun + 0.05) / 0.18, 2.0));
       vec3 c = mix(uRim, vec3(1.0, 0.62, 0.4), edge * 0.55);
-      gl_FragColor = vec4(c * (1.0 + 0.6 * pow(f, 6.0)), f * 0.9 * mix(0.22, 1.1, day) * uFade);
+      gl_FragColor = vec4(c * (1.0 + 0.6 * pow(f, 6.0)), f * 0.9 * mix(0.22, 1.1, day) * uFade * uAir);
     } else gl_FragColor = vec4(uRim, f * 0.9 * uFade);
   }`;
 const tubeVert = /* glsl */`
@@ -615,7 +655,8 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     uRelW: { value: flat }, uRelE: { value: flat }, uTA: { value: blank }, uTB: { value: blank },
     uQA: { value: blank }, uQB: { value: blank }, uQBoxA: { value: new Vector4() }, uQBoxB: { value: new Vector4() },
     uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
-    uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uFade: { value: 1 }, uGlint: { value: 1 }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
+    uMix: { value: 0 }, uHatch: { value: 60 }, uLook: { value: look ? 1 : 0 }, uFade: { value: 1 }, uGlint: { value: 1 },
+    uInkMap: { value: 0 }, uFloodP: { value: -1e4 }, uFR: { value: 30 }, uInkCol: { value: new Vector3(.4, .32, .62) }, uDisc: { value: new Vector3(0, 0, 1) }, uRes: { value: new Vector2(1, 1) }, uFT: { value: null }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
     uOcean: { value: new Color('#06080d') }, uOceanLift: { value: new Color('#0c1220') }, uRim: { value: rim }, uFocus: { value: new Color(PALETTE.focus) },
   };
   if (relief) {
@@ -630,7 +671,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   }));
   earth.rotation.y = -Math.PI / 2; // equirectangular u=0 at lon -180
   const air = new Mesh(new SphereGeometry(1.06, 96, 64), new ShaderMaterial({
-    uniforms: { uRim: { value: rim }, uLight: { value: light }, uLook: { value: look ? 1 : 0 }, uFade: earthU.uFade }, vertexShader: shellVert, fragmentShader: airFrag,
+    uniforms: { uRim: { value: rim }, uLight: { value: light }, uLook: { value: look ? 1 : 0 }, uFade: earthU.uFade, uAir: { value: 1 } }, vertexShader: shellVert, fragmentShader: airFrag,
     side: BackSide, transparent: true, blending: AdditiveBlending, depthWrite: false,
   }));
   globe.add(earth, air);
@@ -807,7 +848,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
         const span = y1 - y0 + 4, run = (time - playT0) * PLAY_RATE;
         now = y0 + run % span; live = true; playing = true; clockYear = Math.min(y1, Math.floor(now));
       }
-      l.set(spec, op * intro.fade, now, px, scale); // the overture brings points in with the globe
+      l.set(spec, op * intro.fade * realG, now, px, scale); // the overture brings points in with the real globe
     }
     if (!playing) playT0 = null;
     return live;
@@ -986,10 +1027,11 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   // around the globe and, as the reader scrolls in, floods the page and deepens into the night of the stage.
   // The sheet is drawn at CSS size only when it changes, and laid under the globe as one texture.
   const sheet = paper && post ? createSheet(renderer, { cell: 3 }) : null;
-  if (sheet) sheet.ink = paper.ink;
+  if (sheet) { sheet.ink = paper.ink; sheet.glow = 0; const c = new Color(paper.ink).convertLinearToSRGB(); earthU.uInkCol.value.set(c.r, c.g, c.b); }
   let sheetRT = null, sheetDirty = true, flood = sheet ? 0 : 1, bloomK = 0, inkReady = false;
   const intro = { fade: 1, arrive: 1 };
   const grade = { dim: 0, wash: 0, col: new Vector3(1, 1, 1) };
+  let realG = 1;
   const baseLight = light.clone(), backLight = new Vector3(0.9, 0.15, -0.7);
   const circle = [0, 0, 1], scratchCam = camera.clone();
   function sheetTex() {
@@ -1115,6 +1157,17 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
       if (grade.wash > 0) { const c = discOf(camera); post.wash(grade.wash, grade.col, c[0] / W, 1 - c[1] / H); } else post.wash(0);
     }
     if (sheet && sheet.shade !== intro.fade) { sheet.shade = intro.fade; sheetDirty = true; }
+    // the ink map while there is paper: the globe turns real where the flood has turned the page to night; its air,
+    // borders and points come with the real globe (`realG`: how far that has got at the globe's own edge)
+    realG = 1;
+    if (sheet && flood < 1 && inkReady) {
+      const fd = sheet.field();
+      earthU.uInkMap.value = 1; earthU.uFT.value = fd.tex; earthU.uFloodP.value = fd.p; earthU.uFR.value = fd.R;
+      renderer.getDrawingBufferSize(earthU.uRes.value);
+      const k = earthU.uRes.value.x / W; earthU.uDisc.value.set(circle[0] * k, (H - circle[1]) * k, circle[2] * k); // device px, y up
+      realG = smooth(0.05, 0.5, smooth(fd.R * 0.3, fd.R * 2.2, fd.p - fd.R));
+    } else earthU.uInkMap.value = 0;
+    air.material.uniforms.uAir.value = realG;
 
     // textures: keep the last complete state while a new one is painting, so nothing ever flashes blank
     const A = texturesOf(i, true) || lastA || lastB, B = texturesOf(j, true) || A;
@@ -1136,7 +1189,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     for (const m of borderSets.values()) { m.material.opacity = 0; m.material.resolution = lineRes; m.scale.setScalar(lineLift); }
     const cityA = sA.map.city ? 0.4 : 1, cityB = sB.map.city ? 0.4 : 1;
     if (ba) ba.material.opacity += 0.28 * (1 - mix) * cityA; if (bb) bb.material.opacity += 0.28 * mix * cityB;
-    if (intro.fade < 1) for (const m of borderSets.values()) m.material.opacity *= intro.fade;
+    if (intro.fade < 1 || realG < 1) for (const m of borderSets.values()) m.material.opacity *= intro.fade * realG;
 
     setSpikes(i, j, mix, alt);
     live = setPoints(sA, sB, mix, time, alt);
@@ -1181,7 +1234,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     // the threshold's paper (chapters with `paper`): bloom = the ink's reach in globe radii, flood = 0 paper … 1 stage
     setPaper({ bloom, flood: f, ink } = {}) {
       if (!sheet) return;
-      if (ink) { sheet.ink = ink; sheetDirty = true; dirty = true; }
+      if (ink) { sheet.ink = ink; const c = new Color(ink).convertLinearToSRGB(); earthU.uInkCol.value.set(c.r, c.g, c.b); sheetDirty = true; dirty = true; }
       if (bloom != null && bloom !== bloomK) { bloomK = bloom; sheet.bloom = bloom; sheetDirty = true; dirty = true; }
       if (f != null && f !== flood) { flood = f; sheet.flood = f; sheetDirty = true; dirty = true; }
     },

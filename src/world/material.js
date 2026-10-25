@@ -85,7 +85,7 @@ const INK_STEP = /* glsl */`
 // ── composite: paper, its light, the ink, the object's shadow and the light it lets through ────────────────
 const COMPOSITE = /* glsl */`
   uniform sampler2D uPaper, uPaper2, uT; uniform vec2 uCss, uInkSize; uniform float uDpr, uDark, uP, uFlood, uR, uTau, uFeather;
-  uniform vec3 uInk, uStage, uLight; uniform vec3 uObj; uniform float uShade; // object centre (CSS px, y down) and radius; its presence
+  uniform vec3 uInk, uStage, uLight; uniform vec3 uObj; uniform float uShade, uGlow; // object centre (CSS px, y down) and radius; its presence
   varying vec2 vUv;
   float h1(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main(){
@@ -125,7 +125,7 @@ const COMPOSITE = /* glsl */`
     float sh = exp(-max(0., length(d - away * R * .12) / R - .92) * 3.2) * .2 * (1. - deep) * uShade;
     if (dist > 1.) col *= 1. - sh * (1. - dens * .4);
     float glow = exp(-max(0., dist - 1.) * 3.2) * smoothstep(.55, 1., dot(dir, away) * .5 + .5) * smoothstep(0., uR * .5, p);
-    col = mix(col, max(col, uInk * 1.15 + .08), glow * .75 * (1. - deep) * uShade); // light through the object, on the paper
+    col = mix(col, max(col, uInk * 1.15 + .08), glow * .75 * (1. - deep) * uShade * uGlow); // light through the object, on the paper
     gl_FragColor = vec4(col, 1.);
   }`;
 
@@ -143,7 +143,7 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
   const compM = new ShaderMaterial({
     vertexShader: VERT, fragmentShader: COMPOSITE, blending: NoBlending, depthTest: false,
     uniforms: {
-      uShade: { value: 1 }, uPaper: { value: null }, uPaper2: { value: null }, uT: { value: null }, uCss: { value: new Vector2() }, uInkSize: { value: new Vector2() }, uDpr: { value: 1 },
+      uShade: { value: 1 }, uGlow: { value: 1 }, uPaper: { value: null }, uPaper2: { value: null }, uT: { value: null }, uCss: { value: new Vector2() }, uInkSize: { value: new Vector2() }, uDpr: { value: 1 },
       uDark: { value: dark ? 1 : 0 }, uFeather: { value: 4 }, uP: { value: -1e4 }, uFlood: { value: -1e4 }, uR: { value: 30 }, uTau: { value: 6 },
       uInk: { value: new Color('#6d3fd0') }, uStage: { value: new Color('#05060a').convertLinearToSRGB() }, uLight: { value: new Vector3(-.55, .65, .9) },
       uObj: { value: new Vector3(0, 0, 1) },
@@ -198,6 +198,11 @@ export function createSheet(renderer, { seed = 1.7, cell = 3, dark = false } = {
     set flood(f) { compM.uniforms.uFlood.value = f <= 0 ? -1e4 : f * Math.hypot(...cells) * 1.25; },
     // how present the object is (0 not yet there: no shadow, no light through it)
     set shade(v) { compM.uniforms.uShade.value = v; }, get shade() { return compM.uniforms.uShade.value; },
+    // the light the object lets through onto the paper (a gem's; an ink-drawn globe lets none)
+    set glow(v) { compM.uniforms.uGlow.value = v; },
+    // the ink's arrival field and where the flood's front is, for a globe that turns real where the page turns night:
+    // deep = smoothstep(R * 0.3, R * 2.2, p − T(screen)), all in grid cells; the texture is y-up over the whole page
+    field() { const u = compM.uniforms; return { tex: tA ? tA.texture : null, p: u.uFlood.value, R: u.uR.value }; },
     // the globe's disc on the screen now (CSS px), for its shadow and the light it lets through
     set object([x, y, r]) { compM.uniforms.uObj.value.set(x, y, r); },
     set ink(hex) { compM.uniforms.uInk.value.set(hex).convertLinearToSRGB(); },
