@@ -1184,7 +1184,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
       // the flood's first fifth dyes the drawing (as the ink round the globe deepens), then over the next fifth and a
       // half the globe's light comes up through it; both follow the scroll, so they run backwards too
       earthU.uInkMap.value = 1; earthU.uLandM.value = landMap;
-      earthU.uDye.value = smooth(0.0, 0.2, flood); earthU.uReal.value = realG = smooth(0.12, 0.45, flood);
+      earthU.uDye.value = smooth(0.0, 0.2, flood); earthU.uReal.value = realG = smooth(0.1, 0.32, flood);
     } else earthU.uInkMap.value = 0;
     air.material.uniforms.uAir.value = realG;
 

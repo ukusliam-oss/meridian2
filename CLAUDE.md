@@ -160,7 +160,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   blurs by scaling down and up): the painted state textures stair-stepped at ~2 screen px per texel and dotted the
   coast with their glaze bands. The hand-over follows the scroll in two even steps, tied to `flood`: the first fifth
   dyes the drawing as paper takes ink (`uDye`, Beer–Lambert layers, so the middle is a deep violet rather than a grey,
-  ending in the stage's night), then from 12% to 45% the real globe's light comes up through it (`uReal`), and its air,
+  ending in the stage's night), then from 10% to 32% the real globe's light comes up through it (`uReal`; it follows the dye closely, since a fully dyed globe waiting for its light read as a murky ghost), and its air,
   borders and points with it (`realG`). A front that soaked in from the limb was tried and dropped: frayed and cheap.
   Paper hero at DPR 2: 13.9 ms GPU (KQ6), 13.1 ms (Geography).
 - `chapter.css` sets `--serif` to Noto Serif Display 330 inside chapters (the hubs and home still use Instrument Serif).

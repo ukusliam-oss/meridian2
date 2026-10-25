@@ -93,7 +93,7 @@ export function prepareOverture(data, fr) {
       const f = smooth(innerHeight * 0.08, innerHeight * 0.85, y);
       if (world) world.setPaper({ flood: f });
       root.classList.toggle('is-paper', f < 0.97);
-      lock.style.color = f > 0.02 ? `color-mix(in oklab, var(--paper-ink), #ece9e1 ${Math.round(smooth(0.1, 0.5, f) * 100)}%)` : '';
+      lock.style.color = f > 0.02 ? `color-mix(in oklab, var(--paper-ink), #ece9e1 ${Math.round(smooth(0.08, 0.2, f) * 100)}%)` : '';
       fr.tone(f);
     },
   };
