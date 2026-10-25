@@ -25,7 +25,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   grey, `--text-3`, never the subject colour: colour is kept for headings' accents, links, tags and data, so the eye
   is not pulled around. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
   labels on light paper use `--accent-deep` for 4.5:1.
-- `assets/js/core.js` — motion core (the design plan's tokens and moves are in `assets/js/motion.js`, below): Lenis on GSAP's ticker, reveals, SplitText headlines,
+- `assets/js/core.js` — motion core (the design plan's tokens and moves are in `assets/js/motion.js`; the chapters' overture and frame in
+  `overture.js` and `frame.js`, below): Lenis on GSAP's ticker, reveals, SplitText headlines,
   counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle),
   sub-nav scroll spy, `store` (localStorage, try/catch).
 - `assets/js/ui.js` — exam anatomy, Paper 2 topic finder, topic map, examples tracker, technique
@@ -110,11 +111,20 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   shader discards it through `uCut`), `isolines: { id }` (ShakeMap intensity lines coloured IV to X). The legend
   switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
 
-## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phases 0 and 1 done 2026-10-25)
+## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phases 0–2 done 2026-10-25)
 - The plan measures Cartier's "Le Chœur des Pierres" (opening timeline, proportions, curves, its title face, paper and
   ink) and translates it: an overture where the chapter title is born mid-screen at 1.5× and glides home in 2 s, a
   frame UI instead of bars, three speeds, light and material on the globe, Noto Serif Display, paper at the thresholds
-  and the dark stage for scenes, joined by ink. Phases 2–5 (frame UI, scene motion, hubs and home) are not built.
+  and the dark stage for scenes, joined by ink. Phases 3–5 (scene motion, hubs and home, wrap-up) are not built.
+- The frame (phase 2, `assets/js/frame.js`), on chapters with `lockup`: no nav bar and no phone tab bar, only 12 px
+  capitals on the edges at `--frame` (32 px at 1440; text 5 px inside it, top and bottom alike, as Cartier's 37 px):
+  MENU (a drawer with the whole site from `assets/js/data/site.js`; add a chapter there and in `tools/pages.py`),
+  the wordmark (home), the subject with × (its hub), the parts as numerals in 32 px rings on the right (the part being
+  read is lit, a hover names it, a click goes to its first scene; inactive rings fade but their numerals keep 0.65
+  for 4.5:1), SOUND on/off, and the overture's "Scroll to begin". Its ink follows the flood (`tone`): dark on paper,
+  light on the stage, where soft shades sit in the corners and behind the rings. The pill waits for the first scene
+  (`.is-pre`); the legend moves clear of the frame. Phones: no rings and no subject link (both in the menu), the sound
+  icon top right, the pill on the bottom edge.
 - The overture (phase 1, `assets/js/overture.js`), for chapters that set `lockup` and `ink` (all three do): the loader
   is a sheet of paper with the Meridian mark drawing its ring as the map loads; the whole screen is the gate ("Tap
   anywhere to enter", Enter or Space; the Sound corner switches the remembered choice and stays as the paper's sound
@@ -162,6 +172,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   frame at DPR 2: paper hero 14.1 ms, Berlin 10.3 ms with `look` (6.9 without); 4× MSAA had made the hero 21.4 ms,
   so the post target takes 2 samples from DPR 1.5. The ink's arrival field: 15 ms once (16-neighbour relaxation;
   8 neighbours drew octagons).
+- Measured, phase 2: frame text 13.1:1 on paper and 15.7:1 on the plain stage; over Þingvellir's bright terrain the
+  shaded background behind the edges gives 5.9–6.8:1 at the median and 4.2–5.4:1 against its brightest tenth.
+  Left and right margins equal at 1440 × 900, 1280 × 720, 768 × 1024 and 390 × 844; top and bottom text within 2 px.
 - Traps: three encodes its own materials (LineMaterial, MeshBasicMaterial) to sRGB only on the screen, never into a
   render target, while the engine's raw shaders write display values either way; post.js patches those materials to
   encode in the target too (without it the plate lines came out ΔE 13 darker). `Color.set('#hex')` stores linear

@@ -10,11 +10,10 @@ import { $, $$, gsap, lenis, reduced, store, esc } from './core.js';
 import { words, blurIn, blurOut, lineOut, hold, returning, DUR } from './motion.js';
 
 const SPEAKER = on => `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>${on ? '<path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>' : '<path d="m16 9.5 5 5M21 9.5l-5 5"/>'}</svg>`;
-const ARROW = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // builds the paper loader, the title lock-up, the statement screen and the corners; returns the overture's controls
-export function prepareOverture(data) {
+export function prepareOverture(data, fr) {
   const root = document.documentElement, L = data.lockup;
   root.classList.add('has-ov', 'is-paper');
   const loader = $('[data-loader]');
@@ -35,12 +34,6 @@ export function prepareOverture(data) {
       ${eye ? `<p class="mono ch-q__eye">${eye.innerHTML}</p>` : ''}
       <h1 class="ch-q__t" data-ov-statement>${q}</h1>
       ${info ? `<p class="mono ch-q__info">${info.innerHTML}</p>` : ''}</div></section>`);
-  const frame = document.createElement('div');
-  frame.className = 'ov-frame';
-  frame.innerHTML = `<a class="ov-mark-word" href="../index.html" data-ov-word><span class="ov-word">Meridian</span><span class="ov-sub mono" data-ov-sub>${esc(L.sub || '')}</span></a>
-    <button class="ov-sound mono" type="button" data-ov-sound></button>
-    <span class="ov-scroll mono" data-ov-scroll><span class="ov-scroll__o">${ARROW}</span>Scroll to begin</span>`;
-  document.body.appendChild(frame);
   if (data.ink) root.style.setProperty('--ov-ink', data.ink);
 
   const title = $('[data-ov-title]'), lock = $('[data-ov-lock]'), label = $('[data-ov-label]'), statement = $('[data-ov-statement]');
@@ -54,12 +47,13 @@ export function prepareOverture(data) {
   const ws = words(title), sw = words(statement);
   // the start state is set now, under the loader, so the first blur is prepared before anyone sees it
   if (!reduced) gsap.set([...ws, label, ...sw], { opacity: 0, filter: `blur(5px)` });
-  const sub = $('[data-ov-sub]'), word = $('[data-ov-word]'), soundBtn = $('[data-ov-sound]'), scroll = $('[data-ov-scroll]');
+  // the frame's wordmark, sound and hint take part in the overture; its other edges arrive after the title
+  const { sub, word, soundBtn, hint: scroll, edges } = fr, frame = fr.el;
   const corners = [soundBtn, scroll];
-  if (!reduced) gsap.set([...corners, word], { opacity: 0 });
+  if (!reduced) gsap.set([...corners, word, ...edges], { opacity: 0 });
 
   let soundOn = store.get('sound', true), snd = null;
-  const showSound = () => { soundBtn.innerHTML = `${SPEAKER(soundOn)}<span>Sound ${soundOn ? 'on' : 'off'}</span>`; soundBtn.setAttribute('aria-pressed', String(soundOn)); };
+  const showSound = () => fr.showSound(soundOn);
   showSound();
   soundBtn.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; store.set('sound', soundOn); showSound(); if (snd && entered) snd.start(soundOn); if (!entered) hintText(); });
   const hint = $('[data-ov-hint]');
@@ -100,8 +94,7 @@ export function prepareOverture(data) {
       if (world) world.setPaper({ flood: f });
       root.classList.toggle('is-paper', f < 0.97);
       lock.style.color = f > 0.02 ? `color-mix(in oklab, var(--paper-ink), #ece9e1 ${Math.round(smooth(0.1, 0.5, f) * 100)}%)` : '';
-      frame.style.opacity = entered ? String(1 - smooth(0.2, 0.55, f)) : '';
-      frame.style.pointerEvents = f > 0.5 ? 'none' : '';
+      fr.tone(f);
     },
   };
 
@@ -118,7 +111,7 @@ export function prepareOverture(data) {
 
     tl.add(lineOut(hint), 0).to(loader, { opacity: 0, duration: DUR.ui, ease: 'none', onComplete: () => loader.classList.add('is-done') }, 0.3);
     if (reduced || skip) {
-      gsap.set([...ws, label, ...corners, word], { opacity: 1, filter: 'none' });
+      gsap.set([...ws, label, ...corners, word, ...edges], { opacity: 1, filter: 'none' });
       Object.assign(intro, { fade: 1, arrive: 1, bloom: BLOOM });
       push(); frame.classList.remove('is-gate'); return done;
     }
@@ -128,7 +121,7 @@ export function prepareOverture(data) {
         .add(blurIn(ws, { dur: 0.8, stagger: 0.06 }), 0.2)
         .to(intro, { arrive: 1, bloom: BLOOM, duration: 1.2, ease: 'm.smooth' }, 0.3)
         .add(blurIn(label, { dur: 0.6, shuffle: false }), 0.6)
-        .add(blurIn([word, scroll], { dur: 0.6, stagger: 0.12, shuffle: false }), 0.8)
+        .add(blurIn([word, ...edges, scroll], { dur: 0.6, stagger: 0.12, shuffle: false }), 0.8)
         .set(sub, { opacity: 0 }, 0);
     } else {
       const g = hold(lock, { scale: 1.5 });
@@ -140,6 +133,7 @@ export function prepareOverture(data) {
         .add(() => g.play(), 1.75)
         .to(intro, { arrive: 1, bloom: BLOOM, duration: DUR.stage, ease: 'm.smooth' }, 1.75)
         .add(blurIn(label, { dur: 0.8, shuffle: false }), 1.8)
+        .add(blurIn(edges, { dur: 0.6, stagger: 0.15, shuffle: false }), 2.2) // MENU, the subject, the part rings
         .add(blurIn(scroll, { dur: 0.8, shuffle: false }), 3.7); // the sound corner stays where the gate left it
     }
     tl.call(() => frame.classList.remove('is-gate'), null, 0.3);

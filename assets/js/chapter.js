@@ -182,7 +182,9 @@ function sceneHTML(s, i) {
 
 $('[data-scenes]').innerHTML = scenes.map(sceneHTML).join('');
 // a chapter with a title lock-up opens with the overture (overture.js): paper, the title's glide, ink, then the stage
-const ov = data.lockup ? (await import('./overture.js')).prepareOverture(data) : null;
+// and keeps a frame instead of bars (frame.js): MENU, the wordmark, the subject, the part rings, SOUND
+const fr = data.lockup ? (await import('./frame.js')).createFrame({ data, parts, goTo }) : null;
+const ov = data.lockup ? (await import('./overture.js')).prepareOverture(data, fr) : null;
 // a draft says so under the chapter title (or its question); a reviewed chapter shows nothing
 const draftAt = $('.ch-q .ch-wrap') || $('.ch-hero .ch-wrap');
 if (data.subject && data.status === 'draft' && draftAt) draftAt.insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
@@ -528,7 +530,7 @@ function soundToggle() {
 async function start() {
   setPct(0.02);
   if (data.sound) {
-    try { snd = await import('./sound.js'); soundToggle(); snd.bindUI(); } catch (err) { console.warn('Sound unavailable:', err); snd = null; }
+    try { snd = await import('./sound.js'); if (!fr) soundToggle(); snd.bindUI(); } catch (err) { console.warn('Sound unavailable:', err); snd = null; }
   }
   try {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
@@ -560,6 +562,7 @@ async function start() {
     root.classList.toggle('is-past', y + innerHeight * 0.5 > holds[N - 1][1] + innerHeight * 0.35);
     if (world) world.setProgress(ep);
     if (ov) ov.scroll(y, world);
+    if (fr) { fr.setPart(p < -0.5 ? 0 : partOf(Math.min(N - 1, Math.max(0, Math.round(p))))); root.classList.toggle('is-pre', p < -0.25); }
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
   });
