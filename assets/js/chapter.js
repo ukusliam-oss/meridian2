@@ -196,6 +196,7 @@ const ov = data.lockup ? (await import('./overture.js')).prepareOverture(data, f
 // ── scene motion (design plan §7.1–7.2), framed chapters: when a panel reaches the reading line its title's words
 // sharpen out of a blur, its date follows, its paragraphs rise 12 px; a part's statement screen sharpens the same way.
 // Each plays once. Reading text is never blurred and never tied to the scroll.
+const leaving = []; // the part statements, which leave before the frame's top edge (the ticker, below)
 if (fr && !reduced) {
   const { words, blurIn, DUR } = await import('./motion.js');
   const once = (el, margin, fn) => { const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); fn(); } }, { rootMargin: margin }); io.observe(el); };
@@ -211,6 +212,7 @@ if (fr && !reduced) {
   });
   $$('.part--st').forEach(h => {
     const st = $('[data-st]', h), num = $('.part__num', h), fp = $('.part__fps', h);
+    [num, st, ...(fp ? fp.children : [])].forEach(el => leaving.push({ el, k: 1 })); // each line leaves on its own
     gsap.set([st, num, fp], { opacity: 0 });
     once(h, '0px 0px -40% 0px', () => {
       blurIn(num, { dur: DUR.fade, shuffle: false });
@@ -612,6 +614,13 @@ async function start() {
     }
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
+    // a part's statement leaves line by line before it reaches the frame's top edge (the wordmark): a blur and a fade
+    for (const b of leaving) {
+      const t = b.el.getBoundingClientRect().top;
+      const k = t > innerHeight ? 1 : Math.round(smooth(70, 190, t) * 100) / 100;
+      if (k === b.k) continue; b.k = k;
+      b.el.style.opacity = k < 1 ? String(k) : ''; b.el.style.filter = k < 1 ? `blur(${((1 - k) * 6).toFixed(1)}px)` : '';
+    }
   });
   addEventListener('resize', () => { measure(); lastY = NaN; });
   document.fonts?.ready.then(() => { measure(); lastY = NaN; });

@@ -126,12 +126,13 @@ export function prepareOverture(data, fr) {
     } else {
       const g = hold(lock, { scale: 1.5 });
       tl.add(blurIn(ws), 0.5)
-        .to(intro, { fade: 1, duration: 0.8, ease: 'm.sine' }, 1.6) // the title has the paper to itself until it moves
+        .to(intro, { fade: 1, duration: 0.8, ease: 'm.sine' }, 2.6) // the title has the paper to itself until it has glided past the globe's place
         .fromTo(word, { opacity: 0, scale: 2, y: 18 }, { opacity: 1, duration: 0.6, ease: 'm.sine' }, 0.9)
         .to(word, { scale: 1, y: 0, duration: DUR.stage, ease: 'm.smooth' }, 1.75)
         .to(sub, { opacity: 0, duration: 0.3, ease: 'none' }, 1.75)
         .add(() => g.play(), 1.75)
-        .to(intro, { arrive: 1, bloom: BLOOM, duration: DUR.stage, ease: 'm.smooth' }, 1.75)
+        .to(intro, { arrive: 1, duration: DUR.stage, ease: 'm.smooth' }, 1.75)
+        .to(intro, { bloom: BLOOM, duration: 1.5, ease: 'm.smooth' }, 2.9) // the ink spreads once the title is below it
         .add(blurIn(label, { dur: 0.8, shuffle: false }), 1.8)
         .add(blurIn(edges, { dur: 0.6, stagger: 0.15, shuffle: false }), 2.2) // MENU, the subject, the part rings
         .add(blurIn(scroll, { dur: 0.8, shuffle: false }), 3.7); // the sound corner stays where the gate left it

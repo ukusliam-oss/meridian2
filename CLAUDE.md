@@ -123,7 +123,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   read is lit, a hover names it, a click goes to its first scene; inactive rings fade but their numerals keep 0.65
   for 4.5:1), SOUND on/off, and the overture's "Scroll to begin". Its ink follows the flood (`tone`): dark on paper,
   light on the stage, where soft shades sit in the corners and behind the rings. The pill waits for the first scene
-  (`.is-pre`); the legend moves clear of the frame. Phones: no rings and no subject link (both in the menu), the sound
+  (`.is-pre`) and, on screens 1000 px and wider, is centred under the date ribbon (in the middle it covered the
+  panel's text); the legend moves clear of the frame. Phones: no rings and no subject link (both in the menu), the sound
   icon top right, the pill on the bottom edge. The edges speak in Archivo Expanded 500 (`.fr-ui`, chosen over Plex
   Mono); a hover on an edge control blooms a drop of ink behind it (an SVG disc frayed by feTurbulence; pigment with
   `multiply` on the paper, white light with `screen` on the stage).
@@ -131,7 +132,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   reaches the reading line (35% from the bottom), the date follows, its paragraphs and blocks rise 12 px, once each;
   reading text is never blurred or tied to the scroll. A part opens with a statement screen (`.part--st`: the numeral
   in a ring, the part's name in 84 px serif, its focus points), during which the ribbon, legend and labels step aside
-  (`.is-part`). Between parts the subject's colour washes the screen as light (`world.setLook({ wash })`, a screen
+  (`.is-part`); scrolling on, its lines leave one by one (a blur and a fade as each line's top passes 190 → 70 px)
+  before they reach the wordmark. Between parts the subject's colour washes the screen as light (`world.setLook({ wash })`, a screen
   blend from the globe outwards, peak 0.75, rising over the first 30% of the gap and gone by 60%); while a panel holds,
   the reading grade dims the panel's half by up to 12%, bloom to 30% and the sea's glint to 40% (`setLook({ dim })`).
   Panels drop the part tag and the scene number (the rings and the pill carry them) and get a finer glass with a top
@@ -141,8 +143,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   anywhere to enter", Enter or Space; the Sound corner switches the remembered choice and stays as the paper's sound
   switch). Then the title lock-up (Noto Serif Display 330, Cartier's proportions: italic 0.7em centred on the capitals,
   second line flush right, the label below) is born mid-screen at 1.5×, its words sharpen in a random order, and at
-  1.75 s it glides home over 2 s while the globe fades in, arrives from 2.4× further away and the sun comes round
-  (`world.setIntro`), and ink blooms round it (`world.setPaper({ bloom })`), all on `m.smooth`. Scrolling floods the
+  1.75 s it glides home over 2 s while the globe arrives from 2.4× further away and the sun comes round
+  (`world.setIntro`), all on `m.smooth`; the globe fades in only from 2.6 s and the ink blooms round it from 2.9 s
+  (`world.setPaper({ bloom })`, 1.5 s), once the gliding title has passed their place (earlier, they sat behind it). Scrolling floods the
   paper (`flood`, from 8% to 85% of the first screen): the ink spreads from the globe and deepens into the stage, the
   stars come in, and only then the nav bar, pill, legend and labels (`.is-paper` hides them). The hero's question
   becomes a statement screen (`.ch-q`, 84 px serif, words sharpen when its top passes 60% of the screen). Returning

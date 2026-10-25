@@ -556,6 +556,8 @@
 /* no bars on a framed chapter; the pill waits for the first scene; the legend moves clear of the frame */
 .has-frame .nav, .has-frame .tabbar { display: none !important; }
 .has-frame.is-pre .pillnav { opacity: 0; pointer-events: none; }
+/* wide screens: the pill is centred under the date ribbon, clear of the panel's column, which it covered */
+@media (min-width: 1000px) { .has-frame .pillnav { left: calc(100vw - var(--gutter) - min(620px, 100vw - 2 * var(--gutter) - 600px) / 2); } }
 .has-frame .world__legend { top: calc(var(--frame) + 44px); right: calc(var(--frame) + 56px); }
 
 
