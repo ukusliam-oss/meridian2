@@ -531,7 +531,7 @@ async function start() {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
     buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light, look: +(new URLSearchParams(location.search).get('look') || 0) }); // ?look=2: the design plan's light (phase 0 trial)
     window.__meridianWorld = world; // stats for checks in the preview
     if (world) for (const s of scenes) if (s.map && s.map.section && s.map.relief3d) {
       const fig = $(`[data-xs="${s.id}"]`), x = s.map.section;

@@ -22,6 +22,15 @@
   --r-lg: 24px; --r-md: 20px; --r-sm: 14px;
   --ease: cubic-bezier(.16, 1, .3, 1);
   --ease-io: cubic-bezier(.65, 0, .35, 1);
+  /* motion tokens, the same names as motion.js's EASE and DUR: UI 0.15–0.5 s, text 1 s, stage 2 s */
+  --ease-smooth: cubic-bezier(.5, 0, 0, 1);
+  --ease-expo: cubic-bezier(.14, 1, .34, 1);
+  --ease-quint: cubic-bezier(.22, 1, .36, 1);
+  --ease-inout: cubic-bezier(.66, 0, .34, 1);
+  --ease-sine: cubic-bezier(.445, .05, .55, .95);
+  --ease-in: cubic-bezier(.17, 0, .83, .83);
+  --dur-ui: .3s; --dur-ui2: .5s; --dur-fade: .6s; --dur-text: 1s; --dur-stage: 2s;
+  --frame: clamp(16px, 2.22vw, 40px);
   --nav-h: 64px;
   --fs-display: clamp(3.1rem, 1.2rem + 7.4vw, 9rem);
   --fs-h1: clamp(2.7rem, 1.3rem + 5.6vw, 7rem);

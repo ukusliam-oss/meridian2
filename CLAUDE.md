@@ -25,7 +25,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   grey, `--text-3`, never the subject colour: colour is kept for headings' accents, links, tags and data, so the eye
   is not pulled around. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
   labels on light paper use `--accent-deep` for 4.5:1.
-- `assets/js/core.js` — motion core: Lenis on GSAP's ticker, reveals, SplitText headlines,
+- `assets/js/core.js` — motion core (the design plan's tokens and moves are in `assets/js/motion.js`, below): Lenis on GSAP's ticker, reveals, SplitText headlines,
   counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle),
   sub-nav scroll spy, `store` (localStorage, try/catch).
 - `assets/js/ui.js` — exam anatomy, Paper 2 topic finder, topic map, examples tracker, technique
@@ -109,6 +109,41 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   `world.profile`), `cutaway: { lon }` (the northern octant from that longitude removed, layers on its faces; the earth
   shader discards it through `uCut`), `isolines: { id }` (ShakeMap intensity lines coloured IV to X). The legend
   switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
+
+## Design and motion (plan: `../Meridian 디자인·모션 설계 계획서.md`, v2; phase 0 done 2026-10-25)
+- The plan measures Cartier's "Le Chœur des Pierres" (opening timeline, proportions, curves, its title face, paper and
+  ink) and translates it: an overture where the chapter title is born mid-screen at 1.5× and glides home in 2 s, a
+  frame UI instead of bars, three speeds, light and material on the globe, Noto Serif Display, paper at the thresholds
+  and the dark stage for scenes, joined by ink. Phases 1–5 are not built; nothing on the live chapters has changed.
+- `assets/js/motion.js`: tokens (`EASE` smooth/expo/quint/io/sine/in registered as `m.*`, `DUR` ui .3, text 1, stage 2),
+  `words`, `blurIn` (5 px, 1 s linear, 0.1 s apart, random order), `blurOut`, `lineOut`, `glide`/`hold` (FLIP from
+  the centre, CLS 0), `director`, `returning`. The same tokens are CSS variables in site.css (`--ease-smooth`, `--dur-*`,
+  `--frame`). core.js's `m.out`/`m.io` stay as they were.
+- Fonts: `tools/build-fonts.py` (fontTools + brotli; inputs from google/fonts in `tools/.cache/font-eval/`) makes
+  `noto-serif-display-{330,350,400}[-italic].woff2` (62.5% width, Latin + Œ, 12–13 KB each) and
+  `archivo-expanded-500.woff2` (UI candidate). Only the lab uses them so far; keep one weight after phase 1.
+- `src/world/material.js` (`createSheet`): paper baked once per size into two half-float textures (folds, bands,
+  fibres, the folds lit, granulation, pooling) and ink as an arrival-time field (8-neighbour relaxation on a 3 px grid,
+  ~650 sweeps, 17 ms once per source), played by a threshold: `bloom` (multiples of the object's radius) and `flood`
+  (0..1, the ink deepening into the stage colour) can run backwards with the scroll. Pigment is a Beer–Lambert filter
+  (thin ink keeps its hue). `src/world/lab.js` → `assets/js/design-lab.js` (`npm run lab`, three bundled) for
+  `design/lab.html` (unlinked, noindex): `?font=330|350|400|inst&ui=plex|archivo&subject=…&dark=1&bloom=&flood=&clean=1`,
+  `__overture()` plays the overture on paper.
+- `src/world/post.js` (`createPost`): half-float MSAA target, bloom (threshold .84, 5 levels, 3 on phones), exposure,
+  a brightness-only shoulder, a grade that skips coloured pixels, optional vignette (0: chapter.css already has one),
+  grain. The engine uses it, plus sun glints on water and a scattering atmosphere, only with `look` (chapter pages:
+  `?look=2`). Without it the frame is the same as before (KQ6 Berlin: 3 of 1.3 M pixels differ by 1).
+- Measured (2026-10-25, dev Mac M5, headless, 1440 × 900, DPR 1): paper + ink 0.66 ms GPU (EXT timer query);
+  `look` adds 1.0–2.4 ms GPU per drawn frame (KQ6 hero 7.4 → 8.4, Berlin 4.3 → 6.7, Economics 8.3 → 9.4) and
+  0.25–0.4 ms CPU; map colours under `look` differ from the plain frame by ΔE2000 0.04–0.32 (fill-weighted mean,
+  worst data fill 1.8; only the sea's glint moves more). Lab overture: 16.7 ms median and p95 frames, CLS 0, no long
+  task; the very first run has one 233 ms frame (first blur and filter set-up), later runs none. Ink against Cartier's
+  emerald (radial profile): extent 2.05 vs 2.0 radii, lopsided 1.39 vs 1.55, edge saturation 88 vs 84. Paper:
+  mean 236–244 (Cartier 238–244), mid grain σ 1.2–1.5 (0.93), fibres' direction 0.69–0.73 (0.45–0.68).
+- Traps: three encodes its own materials (LineMaterial, MeshBasicMaterial) to sRGB only on the screen, never into a
+  render target, while the engine's raw shaders write display values either way; post.js patches those materials to
+  encode in the target too (without it the plate lines came out ΔE 13 darker). `Color.set('#hex')` stores linear
+  values: in raw shaders call `.convertLinearToSRGB()` (the paper's ink went grey without it).
 
 ## Sound
 - `assets/js/sound.js`, synthesised with Web Audio (no audio files), modelled on measurements of Cartier's "Le Chœur

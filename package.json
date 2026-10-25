@@ -8,6 +8,7 @@
     "build": "npm run dots && esbuild src/globe.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/globe.js",
     "maps": "node tools/build-maps.mjs",
     "world": "esbuild src/world/engine.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world.js && esbuild src/world/paint-worker.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world-paint.js",
+    "lab": "esbuild src/world/lab.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/design-lab.js",
     "serve": "python3 -m http.server 5183"
   },
   "devDependencies": {
