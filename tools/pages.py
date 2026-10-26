@@ -93,7 +93,12 @@ changes = ''.join([
     ('Examples', W('case studies', '16 detailed specific examples')),
   ], 'All 16 detailed specific examples are listed on the <a href="geography.html#examples">Geography page</a>.'),
 ])
-home_main = f'''
+# the paper first screen (assets/js/paper-start.js fills and moves it): the loader, the stage, the rows of chapter globes,
+# the "Discover" line and the title's lock-up; label_tag is <a> on the home (the subject's hub) and <p> on a hub
+def paper_screen(lines, label, label_tag='a', href=''):
+    lock = ''.join(f'<span class="ov-l">{f"<i>{it}</i>" if it else ""}<span>{caps}</span></span>' for it, caps in lines)
+    attr = f' href="{href}"' if label_tag == 'a' else ''
+    return f'''
 <div class="loader loader--paper" data-loader aria-hidden="true"><div class="ov-load">
   <svg class="ov-mark" viewBox="0 0 64 64"><circle class="ov-mark__track" cx="32" cy="32" r="27"/><circle class="ov-mark__ring" cx="32" cy="32" r="27" pathLength="1" data-ov-ring/><ellipse class="ov-mark__mer" cx="32" cy="32" rx="11" ry="27"/></svg>
 </div></div>
@@ -104,13 +109,15 @@ home_main = f'''
     <div class="hm__words" data-home-words>
     <p class="hm__discover fr-ui" data-home-discover aria-hidden="true"></p>
     <div class="ov-lock hm__lock" data-ov-lock>
-      <h1 class="ov-lock__t" id="hm-title" data-ov-title><span class="sr-only">Meridian: </span><span class="ov-l"><span>Individuals</span></span><span class="ov-l"><i>and</i><span>Societies</span></span></h1>
-      <a class="ov-lock__lab hm__label" data-home-label href="history.html">History · 0470</a>
+      <h1 class="ov-lock__t" id="hm-title" data-ov-title><span class="sr-only">Meridian: </span>{lock}</h1>
+      <{label_tag} class="ov-lock__lab hm__label" data-home-label{attr}>{label}</{label_tag}>
     </div>
     </div>
   </div>
 </section>
+'''
 
+home_main = paper_screen([('', 'Individuals'), ('and', 'Societies')], 'History · 0470', 'a', 'history.html') + f'''
 <section class="section" id="changes" style="background:var(--bg-2)"><div class="wrap">
   <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Syllabus changes</p><h2 class="h2" data-split><em>What has changed</em>for 2027</h2></div>
     <p class="lede" data-reveal>Economics and Geography have revised syllabuses for exams from 2027, with changes to the papers. History has been updated, but the content and papers are mostly the same. Check that your revision materials match the syllabus you are taking.</p></header>
@@ -132,12 +139,13 @@ home_main = f'''
 
 (ROOT / 'index.html').write_text(shell('home', 'Meridian | IGCSE I&S revision', 'Revision notes, interactive diagrams and exam technique for Cambridge IGCSE History 0470, Economics 0455 and Geography 0460, for exams from 2027.', home_main, 'home.js', css=('frame.css', 'home.css'), body='home'))
 
+# each hub: its name, code and the line under its title on the paper first screen
 HEROES = {
-  'history': ('History', '0470', '2027–2028 syllabus', 'The twentieth century: international relations since 1919, and one depth study.', [('6', 'Core key questions'), ('60', 'marks in Paper 1'), ('3', 'components')]),
-  'economics': ('Economics', '0455', '2027–2029 syllabus', 'How consumers, firms and governments make decisions when resources are scarce.', [('6', 'topics'), ('40', 'questions in Paper 1'), ('70', '% of total marks in Paper 2')]),
-  'geography': ('Geography', '0460', '2027–2029 syllabus', 'Five physical and five human topics. Each topic includes how people manage the environment sustainably.', [('10', 'topics'), ('16', 'detailed specific examples'), ('75', 'marks in each written paper')]),
+  'history': ('History', '0470', 'International relations since 1919'),
+  'economics': ('Economics', '0455', 'Markets, government and trade'),
+  'geography': ('Geography', '0460', 'Physical and human geography'),
 }
-# History chapters told as scroll journeys over the globe (history/kq*.html), shown under the History hero
+# History chapters told as scroll journeys over the globe (history/kq*.html), shown under the History hub's paper
 CHAPTERS = '''
 <section class="chapters" data-tone="dark"><div class="wrap">
   <p class="eyebrow">Scroll chapters · start here for the June 2027 Paper 2 topic</p>
@@ -196,17 +204,8 @@ GEO_CHAPTERS = '''
 </div></section>'''
 SUBJECT_CHAPTERS = {'history': CHAPTERS, 'economics': ECON_CHAPTERS, 'geography': GEO_CHAPTERS}
 
-for k, (name, code, eyebrow, lede, stats) in HEROES.items():
-    main = f'''
-<section class="s-hero" data-tone="dark">
-  <div class="s-hero__art" data-art aria-hidden="true"></div>
-  <div class="grain"></div>
-  <div class="wrap">
-    <p class="eyebrow">Cambridge IGCSE · {eyebrow}</p>
-    <div class="s-hero__title"><h1 class="h1" data-split="now">{name}</h1><span class="s-hero__code">{code}</span></div>
-    <div class="s-hero__row"><p class="lede">{lede}</p>
-      <div class="s-hero__stats">{''.join(f'<div><b data-count="{n}">{n}</b><span>{t}</span></div>' for n, t in stats)}</div></div>
-  </div>
-</section>''' + SUBJECT_CHAPTERS.get(k, '')
-    (ROOT / f'{k}.html').write_text(shell(k, f'{name} {code} | Meridian', f'Cambridge IGCSE {name} {code} revision: assessment overview, syllabus content, an interactive diagram, exam technique, command words, flashcards and a quiz.', main, 'subject.js', k))
+# every hub opens on paper (paper-start.js): its chapter globes, its name, the four steps as the frame's rings
+for k, (name, code, line) in HEROES.items():
+    main = paper_screen([('', name)], f'{code} · {line}', 'p') + SUBJECT_CHAPTERS.get(k, '')
+    (ROOT / f'{k}.html').write_text(shell(k, f'{name} {code} | Meridian', f'Cambridge IGCSE {name} {code} revision: assessment overview, syllabus content, an interactive diagram, exam technique, command words, flashcards and a quiz.', main, 'subject.js', k, css=('frame.css', 'home.css'), body='home hub'))
 print('wrote 4 pages')

@@ -218,28 +218,6 @@ function spotlight() {
   }, { passive: true });
 }
 
-// sticky sub-navigation with a scroll-spy pill
-export function subnav(el) {
-  if (!el) return;
-  const links = $$('a', el), seg = $('.seg', el);
-  const pill = document.createElement('span');
-  pill.className = 'seg__pill';
-  seg.prepend(pill);
-  let current = null;
-  const setActive = a => {
-    if (a === current) return;
-    current = a;
-    links.forEach(l => l.classList.toggle('is-active', l === a));
-    gsap.to(pill, { x: a.offsetLeft, width: a.offsetWidth, opacity: 1, duration: reduced ? 0 : 0.6, ease: 'm.out' });
-    if (seg.scrollWidth > seg.clientWidth) seg.scrollTo({ left: a.offsetLeft - seg.clientWidth / 2 + a.offsetWidth / 2, behavior: reduced ? 'auto' : 'smooth' });
-  };
-  gsap.set(pill, { opacity: 0 });
-  links.forEach(a => {
-    const sec = document.getElementById(a.getAttribute('href').slice(1));
-    if (!sec) return;
-    ScrollTrigger.create({ trigger: sec, start: 'top 45%', end: 'bottom 45%', onToggle: s => s.isActive && setActive(a) });
-  });
-}
 
 let booted = false;
 export function boot(scope = document) {

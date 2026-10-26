@@ -19,7 +19,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   `data-theme`, `data-tone="dark"` forces dark inside light pages), nav + phone tab bar, home, subject, labs.
   One type system everywhere: `.display/.h1/.h2` are light serif capitals whose `<em>` lead phrase sits on its own
   line in grey italic (only chapter openings, part titles and the Paper 2 title colour it); `.mono`/`.eyebrow`/`.tag` are Plex Mono capitals; Inter for reading.
-  The nav bar, tab bar and sub-nav are grey glass; the chapter pill and scene menu are violet glass (`--brand`, the
+  The nav bar and tab bar are grey glass (only the Paper 2 room and the engine tests still have them; the home, hubs
+  and chapters have the frame); the chapter pill and scene menu are violet glass (`--brand`, the
   pill with `glass.js`'s pointer-lit `.stroke-border` rim); `--accent`/`--accent-deep` is the subject colour for
   content. Small labels (eyebrows, mono headings, "Step 0n", panel labels, table heads, practice part letters) are one
   grey, `--text-3`, never the subject colour: colour is kept for headings' accents, links, tags and data, so the eye
@@ -27,13 +28,16 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   labels on light paper use `--accent-deep` for 4.5:1.
 - `assets/js/core.js` — motion core (the design plan's tokens and moves are in `assets/js/motion.js`; the chapters' overture and frame in
   `overture.js` and `frame.js`, below): Lenis on GSAP's ticker, reveals, SplitText headlines,
-  counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle),
-  sub-nav scroll spy, `store` (localStorage, try/catch).
+  counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle), `store` (localStorage,
+  try/catch).
 - `assets/js/ui.js` — exam anatomy, Paper 2 topic finder, topic map, examples tracker, technique
   blocks, command words, flashcards, quiz.
-- `assets/js/data/*.js` — all content. `subject.js` renders a page from one of these as a path in four steps
-  (`STEPS`: know the exam, learn the content, answer questions, test yourself): step cards under the hero, section
-  labels "Step 0n · …", a sub-nav grouped by step, and a "Next · step" link after each step's last section.
+- `assets/js/data/*.js` — all content. `subject.js` renders a hub from one of these as a path in four steps
+  (`STEPS`: know the exam, learn the content, answer questions, test yourself): step cards after the chapter cards,
+  section labels "Step 0n · …", and a "Next · step" link after each step's last section. A hub opens on paper like the
+  home (`paper-start.js`): its chapter globes, its name and a line (`HEROES` in `tools/pages.py`), and the four steps as
+  the frame's rings (lit by the step being read, a click goes to it), so there is no sub-nav bar; its overture is always
+  the short one and its flood shorter (0.5 screens, the sections already rising as it ends).
 - `assets/js/practice.js` — written practice: one set of exam-style structured questions at a time,
   a mark-scheme reveal per part, a Level 2 and a stronger example answer side by side for the long
   part, data tables, a year-scaled line chart and a labelled S&D diagram. It injects
@@ -41,11 +45,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (8, 7 and 6 sets). `subject.js` mounts it in step 3, after Exam technique and Command words.
   Nothing is typed or saved.
 - `assets/js/labs/` — `timeline.js` (History), `supply-demand.js` (Economics), `dtm.js` (Geography).
-- `assets/js/visuals.js` — subject hero art: year ribbon, live S&D, canvas contour map. History's years and the S&D
-  diagram never sit behind the title: `heroArt` measures the box beside the title word and the box above the title
-  block on every resize and puts the art in whichever lets it draw larger (`--art-l/t/w/h` on `.s-hero`).
-- The home (`index.html`, built by `tools/pages.py`; `assets/js/home.js`, `assets/css/home.css`, `src/world/home.js` →
-  `assets/js/home-world.js`) is described under Design and motion. The old dot globe (`src/globe.js`) was removed
+- The home and the hubs (`index.html`, `history.html` …, built by `tools/pages.py`, `paper_screen`; `assets/js/home.js`,
+  `subject.js`, the shared `assets/js/paper-start.js`, `assets/css/home.css`, `src/world/home.js` →
+  `assets/js/home-world.js`) are described under Design and motion. The hubs' dark hero and its art (`visuals.js`:
+  year ribbon, S&D, contour map) and the sub-nav were removed on 2026-10-26. The old dot globe (`src/globe.js`) was removed
   with it on 2026-10-25.
 
 ## History scroll chapters (plan: `../Meridian History 설계 계획서.md`)
@@ -116,9 +119,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - The plan measures Cartier's "Le Chœur des Pierres" (opening timeline, proportions, curves, its title face, paper and
   ink) and translates it: an overture where the chapter title is born mid-screen at 1.5× and glides home in 2 s, a
   frame UI instead of bars, three speeds, light and material on the globe, Noto Serif Display, paper at the thresholds
-  and the dark stage for scenes, joined by ink. The home is rebuilt on the same frame and overture (below); the hubs
-  and phase 5 (wrap-up) are not done.
-- The home (2026-10-25, after Cartier's home): the chapters' paper, frame and overture. The title "INDIVIDUALS / *and*
+  and the dark stage for scenes, joined by ink. The home and the three hubs are rebuilt on the same frame and overture
+  (below); phase 5 (wrap-up) is not done.
+- The home (2026-10-25, after Cartier's home; `paper-start.js` with all three subjects, the hubs use it with one): the
+  chapters' paper, frame and overture. The title "INDIVIDUALS / *and*
   SOCIETIES" in the lower third, and in the middle each chapter as a small globe drawn in its subject's ink (the chapter's
   paper globe in miniature, turned to its hero view, from `globe` in `assets/js/data/site.js`; a chapter about one place
   rings it and is a lens, `zoom`, so Paper 2 is a close-up of Hungary). The frame's rings are the three subjects and the
@@ -184,7 +188,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   ending in the stage's night), then from 10% to 32% the real globe's light comes up through it (`uReal`; it follows the dye closely, since a fully dyed globe waiting for its light read as a murky ghost), and its air,
   borders and points with it (`realG`). A front that soaked in from the limb was tried and dropped: frayed and cheap.
   Paper hero at DPR 2: 13.9 ms GPU (KQ6), 13.1 ms (Geography).
-- `chapter.css` sets `--serif` to Noto Serif Display 330 inside chapters (the hubs and home still use Instrument Serif).
+- `frame.css` sets `--serif` to Noto Serif Display 330 on every page with `.chapter` or `.home` (chapters, the Paper 2
+  room, the home and the hubs).
 - `assets/js/motion.js`: tokens (`EASE` smooth/expo/quint/io/sine/in registered as `m.*`, `DUR` ui .3, text 1, stage 2),
   `words`, `blurIn` (5 px, 1 s linear, 0.1 s apart, random order), `blurOut`, `lineOut`, `glide`/`hold` (FLIP from
   the centre, CLS 0), `director`, `returning`. The same tokens are CSS variables in site.css (`--ease-smooth`, `--dur-*`,
@@ -357,7 +362,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Globe progress is read from the ticker each frame, not from ScrollTrigger `onUpdate` — that
   callback is skipped when a jump lands outside the trigger range.
 - `[hidden]` needs `display: none !important`, or `.btn`'s display shows hidden buttons.
-- **Lenis undoes `window.scrollTo`** in the preview. To reach a section, click its sub-nav link
+- **Lenis undoes `window.scrollTo`** in the preview. To reach a section, click its frame ring or a step card
   and wheel-scroll, or clone the node into a fixed overlay for a screenshot.
 
 - **Polygon winding**: d3 fills a counter-clockwise ring as "the whole world except this". CShapes and the Berlin WFS

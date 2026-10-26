@@ -1,7 +1,7 @@
-// Subject page: the hero is static HTML; everything below it is rendered from the data file.
-import { boot, subnav, $, reduced, gsap, icons } from './core.js';
+// Subject hub: it opens on paper (paper-start.js): its chapter globes, its name, the four steps as the frame's rings
+// (they find the steps, so there is no sub-nav bar); everything below is rendered from the data file.
+import { boot, $, reduced, icons, lenis } from './core.js';
 import { examAnatomy, topicMap, technique, commandWords, flashcards, quiz, examplesTracker } from './ui.js';
-import { heroArt } from './visuals.js';
 import { practice } from './practice.js';
 
 const id = document.body.dataset.subject;
@@ -42,7 +42,6 @@ $('#content').insertAdjacentHTML('beforeend', `
       <span class="path__n">${num(k)}</span><span class="path__t"><em>${st.em}</em> ${st.rest}</span>
       <span class="path__d">${st.text}</span><span class="path__in mono">${st.secs.map(x => x[1]).join(' · ')}</span></a></li>`).join('')}</ol>
   </div></section>
-  <nav class="subnav" aria-label="On this page"><div class="wrap"><div class="seg">${STEPS.map(st => st.secs.map(([h, l]) => `<a href="#${h}">${l}</a>`).join('')).join('<i class="seg__sep" aria-hidden="true"></i>')}</div></div></nav>
   ${STEPS.map((st, k) => st.secs.map((sec, j) => section(sec, k, j === st.secs.length - 1)).join('')).join('')}
   <section class="section section--tight"><div class="wrap">
     <a class="card next" href="${nid}.html" data-spot data-reveal style="--accent:var(--${ncolor})">
@@ -62,7 +61,19 @@ quiz(m('quiz'), d.quiz.map(q => ({ ...q })), { title: `${d.name} ${d.code}` });
 const lab = await import(`./labs/${d.lab.kind}.js`);
 lab.mount(m('lab'), d.lab);
 
-heroArt($('[data-art]'), id, d);
+{
+  // the steps are the rings: lit by the step being read once the paper has gone, a click goes to the step's first section
+  const [{ paperStart }, { default: site }] = await Promise.all([import('./paper-start.js'), import('./data/site.js')]);
+  const subj = site.subjects.find(x => x.id === id), firsts = STEPS.map(st => $(`#${st.secs[0][0]}`));
+  const to = y => (lenis ? lenis.scrollTo(y, { duration: 1.4 }) : scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' }));
+  const ps = paperStart({
+    subjects: [subj], rings: STEPS.map(st => ({ name: `${st.em} ${st.rest}` })),
+    onRing: k => to(firsts[k].getBoundingClientRect().top + scrollY - innerHeight * 0.12),
+    ringAt: (y, flood) => (flood < 1 ? -1 : firsts.reduce((n, el, k) => (el.getBoundingClientRect().top < innerHeight * 0.45 ? k : n), -1)),
+    label: () => ({ text: $('[data-home-label]').textContent }), key: 'overture-hub', short: true,
+    // one subject: a quicker flood, and the sections already rising as it ends (the title stays pinned until it has gone)
+    flood: 0.5, rise: 0.68,
+    hint: () => to(ps.end - innerHeight * 0.12),
+  });
+}
 boot();
-subnav($('.subnav'));
-if (!reduced) gsap.from('.s-hero .lede, .s-hero__stats > div, .s-hero .eyebrow, .s-hero__code', { y: 24, opacity: 0, duration: 1.2, stagger: 0.08, delay: 0.25 });

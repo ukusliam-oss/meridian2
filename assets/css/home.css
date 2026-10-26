@@ -1,5 +1,5 @@
-/* The home (design plan §6.3, after Cartier's home; home.js): paper and its globes on a fixed stage, a sticky first
-   screen with the title's lock-up through the three subjects, then the dark stage for the rest. frame.css has the frame,
+/* The paper first screen of the home and the hubs (design plan §6.3, after Cartier's home; paper-start.js): paper and
+   its globes on a fixed stage, a sticky first screen with the title's lock-up through the subjects, then the dark stage. frame.css has the frame,
    the paper loader and the lock-up; this file places them on the home. */
 
 .home { --paper: #ececea; --paper-ink: #212529; background: #05060a; }
@@ -18,15 +18,20 @@
 
 /* Cartier's "DISCOVER …" line: above the title, in the frame's capitals */
 .hm__discover { position: absolute; left: 0; right: 0; bottom: calc(40px + var(--lock-h, 260px) + 26px); margin: 0; text-align: center; color: var(--paper-ink); opacity: 0; pointer-events: none; }
-.hm__lock { z-index: 2; }
+.hm__lock { z-index: 2; max-width: calc(100vw - 2 * var(--frame)); }
+/* the title is as wide as its words (the fit measures them, not a longer label), and the label wraps if it must */
+.hm__lock .ov-lock__t { width: max-content; margin-inline: auto; }
+.hm__label { text-wrap: balance; }
 .hm__label { display: inline-block; color: inherit; text-decoration: none; transition: opacity var(--dur-ui) var(--ease-sine); }
 .hm__label:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; }
 .hm__label:focus-visible { outline: 1px solid currentColor; outline-offset: 6px; }
 
 /* the stage after the flood: the sections keep site.css's look, on the night */
-.home .section { background: transparent !important; }
+.home .section, .home main > [data-tone="dark"] { background: transparent !important; } /* the night is the stage's, one colour */
 .home .section + .section { border-top: 1px solid rgb(255 255 255 / .06); }
 
+/* portrait screens take Cartier's portrait size (min(19.9vw, 11.94svh)); home.js still caps it at 86% of the width */
+@media (orientation: portrait) { .home .ov-lock__t { font-size: var(--t, min(19.9vw, 11.94svh)); } }
 @media (max-width: 760px) {
   .hm__discover { bottom: calc(env(safe-area-inset-bottom) + 64px + var(--lock-h, 200px) + 20px); }
 }
@@ -41,6 +46,6 @@
 /* on the stage the sections scroll under the frame: a band of night under the top edge keeps its capitals clear */
 .home .fr::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: calc(var(--frame) + 72px); z-index: -1; pointer-events: none;
   background: linear-gradient(#05060a 35%, rgb(5 6 10 / 0)); opacity: var(--fr-shade, 0); }
-/* the subject rings belong to the paper screen and leave with it */
+/* the home's subject rings belong to the paper screen and leave with it (a hub's step rings stay: they find the steps) */
 .home .fr__parts { transition: opacity var(--dur-ui2) var(--ease-sine), visibility var(--dur-ui2); }
-.home:not(.is-paper) .fr__parts { opacity: 0; visibility: hidden; }
+html:not(.is-paper) .home:not(.hub) .fr__parts { opacity: 0; visibility: hidden; }

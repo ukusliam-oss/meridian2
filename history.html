@@ -9,9 +9,11 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f0b45a' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9.5'/%3E%3C/svg%3E">
 <link rel="preload" href="assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/frame.css">
+<link rel="stylesheet" href="assets/css/home.css">
 <script>(function(){var d=document.documentElement,t;d.classList.add('js');try{t=JSON.parse(localStorage.getItem('meridian:theme'))}catch(e){}d.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');window.__mFallback=setTimeout(function(){d.classList.add('reveal-fallback')},3000)})();</script>
 </head>
-<body data-subject="history">
+<body class="home hub" data-subject="history">
 <a class="skip" href="#content">Skip to content</a>
 <header class="nav"><div class="nav__bar">
   <a class="brand" href="index.html" aria-label="Meridian home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="3.8" ry="9.2" style="stroke:var(--accent, currentColor)"/><path d="M2.8 12h18.4" opacity=".5"/></svg><span>Meridian</span><small>I&amp;S revision</small></a>
@@ -25,16 +27,23 @@
 <nav class="tabbar" aria-label="Pages"><a href="index.html" style="--c:var(--text)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5 12 4l8.5 6.5V19a1 1 0 0 1-1 1H15v-5.5H9V20H4.5a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><a href="history.html" style="--c:var(--hist)" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.2 12 4l9 5.2M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20.5h18"/></svg><span>History</span></a><a href="economics.html" style="--c:var(--econ)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5c4 0 6 15 16 15M4 19.5c6-1 10-14 16-15"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg><span>Econ.</span></a><a href="geography.html" style="--c:var(--geo)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3.4 3 13.6 0 17M12 3.5c-3 3.4-3 13.6 0 17"/></svg><span>Geog.</span></a></nav>
 <main id="content">
 
-<section class="s-hero" data-tone="dark">
-  <div class="s-hero__art" data-art aria-hidden="true"></div>
-  <div class="grain"></div>
-  <div class="wrap">
-    <p class="eyebrow">Cambridge IGCSE · 2027–2028 syllabus</p>
-    <div class="s-hero__title"><h1 class="h1" data-split="now">History</h1><span class="s-hero__code">0470</span></div>
-    <div class="s-hero__row"><p class="lede">The twentieth century: international relations since 1919, and one depth study.</p>
-      <div class="s-hero__stats"><div><b data-count="6">6</b><span>Core key questions</span></div><div><b data-count="60">60</b><span>marks in Paper 1</span></div><div><b data-count="3">3</b><span>components</span></div></div></div>
+<div class="loader loader--paper" data-loader aria-hidden="true"><div class="ov-load">
+  <svg class="ov-mark" viewBox="0 0 64 64"><circle class="ov-mark__track" cx="32" cy="32" r="27"/><circle class="ov-mark__ring" cx="32" cy="32" r="27" pathLength="1" data-ov-ring/><ellipse class="ov-mark__mer" cx="32" cy="32" rx="11" ry="27"/></svg>
+</div></div>
+<div class="hm__stage" data-home-stage aria-hidden="true"></div>
+<section class="hm" data-home aria-labelledby="hm-title">
+  <div class="hm__screen">
+    <div class="hm__rows" data-home-rows></div>
+    <div class="hm__words" data-home-words>
+    <p class="hm__discover fr-ui" data-home-discover aria-hidden="true"></p>
+    <div class="ov-lock hm__lock" data-ov-lock>
+      <h1 class="ov-lock__t" id="hm-title" data-ov-title><span class="sr-only">Meridian: </span><span class="ov-l"><span>History</span></span></h1>
+      <p class="ov-lock__lab hm__label" data-home-label>0470 · International relations since 1919</p>
+    </div>
+    </div>
   </div>
 </section>
+
 <section class="chapters" data-tone="dark"><div class="wrap">
   <p class="eyebrow">Scroll chapters · start here for the June 2027 Paper 2 topic</p>
   <div class="chapters__grid">
